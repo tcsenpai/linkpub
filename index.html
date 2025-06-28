@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LinkPub - Convert Web Articles to EPUB</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>LinkPub</h1>
+            <p>Convert web articles to EPUB format</p>
+        </header>
+
+        <main>
+            <div class="input-section">
+                <div class="input-group">
+                    <input type="url" id="urlInput" placeholder="Enter article URL..." required>
+                    <button id="convertBtn">Convert to EPUB</button>
+                </div>
+                <div class="error-message" id="errorMessage"></div>
+            </div>
+
+            <div class="loading" id="loading" style="display: none;">
+                <div class="spinner"></div>
+                <p>Processing article...</p>
+            </div>
+
+            <div class="preview-section" id="previewSection" style="display: none;">
+                <h3>Preview</h3>
+                <div class="article-preview" id="articlePreview"></div>
+                <button id="downloadBtn" class="download-btn">Download EPUB</button>
+            </div>
+        </main>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
