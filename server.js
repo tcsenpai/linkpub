@@ -3,9 +3,14 @@ const cors = require('cors');
 const { JSDOM } = require('jsdom');
 const { Readability } = require('@mozilla/readability');
 const path = require('path');
+require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Check if Karakeep is configured
+const KARAKEEP_ENABLED = !!(process.env.KARAKEEP_KEY && process.env.KARAKEEP_URL);
+console.log('Karakeep integration:', KARAKEEP_ENABLED ? 'ENABLED' : 'DISABLED');
 
 app.use(cors());
 app.use(express.json());
@@ -136,6 +141,109 @@ app.post('/extract', async (req, res) => {
     res.status(500).json({ 
         error: `Failed to extract article after ${userAgents.length} attempts: ${lastError.message}. This website may be blocking automated access.` 
     });
+});
+
+// Karakeep integration endpoints
+app.get('/api/karakeep/status', (req, res) => {
+    res.json({ enabled: KARAKEEP_ENABLED });
+});
+
+app.get('/api/karakeep/bookmarks', async (req, res) => {
+    if (!KARAKEEP_ENABLED) {
+        return res.status(503).json({ error: 'Karakeep integration not configured' });
+    }
+    
+    try {
+        console.log('Fetching Karakeep bookmarks...');
+        
+        // Build URL with query parameters
+        const url = new URL(`${process.env.KARAKEEP_URL}/bookmarks`);
+        url.searchParams.set('includeContent', 'false'); // Don't need full content for listing
+        url.searchParams.set('limit', '100'); // Get more bookmarks per request
+        url.searchParams.set('archived', 'false'); // Only get active bookmarks
+        
+        const response = await fetch(url.toString(), {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${process.env.KARAKEEP_KEY}`,
+                'Accept': 'application/json',
+                'User-Agent': 'LinkPub/1.0'
+            }
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Karakeep API error response:', errorText);
+            throw new Error(`Karakeep API error: ${response.status} ${response.statusText}: ${errorText}`);
+        }
+        
+        const data = await response.json();
+        console.log(`Retrieved ${data.bookmarks?.length || 0} bookmarks from Karakeep`);
+        
+        // Debug: Log the first bookmark to understand the structure
+        if (data.bookmarks && data.bookmarks.length > 0) {
+            console.log('Sample bookmark structure:', JSON.stringify(data.bookmarks[0], null, 2));
+        }
+        
+        // Transform bookmarks to include only needed fields
+        const bookmarks = (data.bookmarks || []).map(bookmark => {
+            // Extract data from content field (where the actual bookmark data is)
+            const content = bookmark.content || {};
+            const url = content.url || bookmark.url || '';
+            const title = content.title || bookmark.title || content.url || 'Untitled Bookmark';
+            const description = content.description || bookmark.description || bookmark.summary || '';
+            
+            let domain = 'unknown';
+            
+            // Extract domain from URL
+            if (url) {
+                try {
+                    domain = new URL(url).hostname;
+                } catch (e) {
+                    // If URL parsing fails, try to extract domain manually
+                    const match = url.match(/^(?:https?:\/\/)?(?:www\.)?([^\/]+)/);
+                    if (match) {
+                        domain = match[1];
+                    }
+                }
+            }
+            
+            // Process tags - handle both array and object formats
+            let tags = [];
+            if (bookmark.tags) {
+                if (Array.isArray(bookmark.tags)) {
+                    tags = bookmark.tags.filter(tag => tag && typeof tag === 'string');
+                } else if (typeof bookmark.tags === 'object' && bookmark.tags.length) {
+                    // Handle case where tags might be an array-like object
+                    tags = Object.values(bookmark.tags).filter(tag => tag && typeof tag === 'string');
+                }
+            }
+            
+            return {
+                id: bookmark.id,
+                url: url,
+                title: title,
+                description: description,
+                tags: tags,
+                created_at: bookmark.createdAt || bookmark.created_at || bookmark.modifiedAt,
+                domain: domain,
+                favourited: bookmark.favourited || false,
+                // Additional content data
+                author: content.author || '',
+                publisher: content.publisher || '',
+                imageUrl: content.imageUrl || '',
+                datePublished: content.datePublished || ''
+            };
+        });
+        
+        res.json({ bookmarks });
+        
+    } catch (error) {
+        console.error('Karakeep API error:', error.message);
+        res.status(500).json({ 
+            error: `Failed to fetch bookmarks: ${error.message}` 
+        });
+    }
 });
 
 app.listen(PORT, () => {

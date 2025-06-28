@@ -9,8 +9,11 @@
 <body>
     <div class="container">
         <header>
-            <h1>LinkPub</h1>
-            <p>Convert web articles to EPUB format</p>
+            <div class="logo-container">
+                <h1>📚 LinkPub</h1>
+                <span class="version">v1.0</span>
+            </div>
+            <p>Transform the web into your personal library</p>
         </header>
 
         <main>
@@ -18,6 +21,7 @@
             <div class="tab-nav">
                 <button class="tab-btn active" data-tab="single">Single Article</button>
                 <button class="tab-btn" data-tab="collection">Collection</button>
+                <button class="tab-btn" data-tab="karakeep" id="karakeepTab" style="display: none;">Karakeep</button>
             </div>
 
             <!-- Single Article Tab -->
@@ -101,7 +105,71 @@
                     <div class="articles-container" id="articlesContainer"></div>
                 </div>
             </div>
+
+            <!-- Karakeep Tab -->
+            <div class="tab-content" id="karakeepTab">
+                <div class="karakeep-header">
+                    <h3>Your Karakeep Bookmarks</h3>
+                    <p>Select bookmarks to convert to EPUB format</p>
+                </div>
+
+                <div class="karakeep-loading" id="karakeepLoading" style="display: none;">
+                    <div class="spinner"></div>
+                    <p>Loading bookmarks...</p>
+                </div>
+
+                <div class="karakeep-error" id="karakeepError" style="display: none;">
+                    <p class="error-message">Failed to load bookmarks. Please check your Karakeep configuration.</p>
+                    <button id="retryKarakeepBtn" class="secondary-btn">Retry</button>
+                </div>
+
+                <div class="bookmarks-controls" id="bookmarksControls" style="display: none;">
+                    <div class="bookmarks-toolbar">
+                        <div class="selection-controls">
+                            <button id="selectAllBookmarksBtn" class="secondary-btn">Select All</button>
+                            <button id="selectNoneBookmarksBtn" class="secondary-btn">Select None</button>
+                            <span class="selected-count">Selected: <span id="selectedBookmarksCount">0</span></span>
+                        </div>
+                        <div class="filter-controls">
+                            <input type="text" id="bookmarkSearchInput" placeholder="Search bookmarks..." class="search-input">
+                            <select id="domainFilter" class="domain-filter">
+                                <option value="">All domains</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="export-controls">
+                        <input type="text" id="karakeepCollectionTitle" placeholder="Collection Title" class="collection-title-input">
+                        <input type="text" id="karakeepCollectionAuthor" placeholder="Author (optional)" class="collection-author-input">
+                        <button id="downloadSelectedBtn" class="download-btn" disabled>Download Selected as EPUB</button>
+                    </div>
+                </div>
+
+                <div class="processing-bookmarks" id="processingBookmarks" style="display: none;">
+                    <div class="spinner"></div>
+                    <p id="processingText">Processing selected bookmarks...</p>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="karakeepProgressFill"></div>
+                    </div>
+                    <div class="progress-text" id="karakeepProgressText">0 / 0</div>
+                </div>
+
+                <div class="bookmarks-grid" id="bookmarksGrid"></div>
+            </div>
         </main>
+        
+        <footer>
+            <div class="footer-content">
+                <div class="footer-left">
+                    <span class="footer-text">Made with ❤️ for book lovers</span>
+                </div>
+                <div class="footer-right">
+                    <a href="https://github.com/yourusername/linkpub" target="_blank" class="footer-link">GitHub</a>
+                    <span class="footer-separator">•</span>
+                    <a href="LICENSE.md" target="_blank" class="footer-link">MIT License</a>
+                </div>
+            </div>
+        </footer>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>

@@ -31,14 +31,39 @@ class LinkPub {
         this.downloadIndividualBtn = document.getElementById('downloadIndividualBtn');
         this.generateCoverBtn = document.getElementById('generateCoverBtn');
         
+        // Karakeep Elements
+        this.karakeepTabBtn = document.getElementById('karakeepTab');
+        this.karakeepLoading = document.getElementById('karakeepLoading');
+        this.karakeepError = document.getElementById('karakeepError');
+        this.retryKarakeepBtn = document.getElementById('retryKarakeepBtn');
+        this.bookmarksControls = document.getElementById('bookmarksControls');
+        this.bookmarksGrid = document.getElementById('bookmarksGrid');
+        this.selectAllBookmarksBtn = document.getElementById('selectAllBookmarksBtn');
+        this.selectNoneBookmarksBtn = document.getElementById('selectNoneBookmarksBtn');
+        this.selectedBookmarksCount = document.getElementById('selectedBookmarksCount');
+        this.bookmarkSearchInput = document.getElementById('bookmarkSearchInput');
+        this.domainFilter = document.getElementById('domainFilter');
+        this.karakeepCollectionTitle = document.getElementById('karakeepCollectionTitle');
+        this.karakeepCollectionAuthor = document.getElementById('karakeepCollectionAuthor');
+        this.downloadSelectedBtn = document.getElementById('downloadSelectedBtn');
+        this.processingBookmarks = document.getElementById('processingBookmarks');
+        this.processingText = document.getElementById('processingText');
+        this.karakeepProgressFill = document.getElementById('karakeepProgressFill');
+        this.karakeepProgressText = document.getElementById('karakeepProgressText');
+        
         // State
         this.currentArticle = null;
         this.articles = [];
         this.currentTab = 'single';
         this.sortable = null;
+        this.bookmarks = [];
+        this.selectedBookmarks = new Set();
+        this.filteredBookmarks = [];
+        this.karakeepEnabled = false;
         
         this.initEventListeners();
         this.initDragAndDrop();
+        this.checkKarakeepStatus();
     }
     
     initEventListeners() {
@@ -88,6 +113,14 @@ class LinkPub {
         // Export Options Events
         this.downloadIndividualBtn.addEventListener('click', () => this.handleDownloadIndividual());
         this.generateCoverBtn.addEventListener('click', () => this.handleGenerateCover());
+        
+        // Karakeep Events
+        this.retryKarakeepBtn.addEventListener('click', () => this.loadKarakeepBookmarks());
+        this.selectAllBookmarksBtn.addEventListener('click', () => this.selectAllBookmarks());
+        this.selectNoneBookmarksBtn.addEventListener('click', () => this.selectNoneBookmarks());
+        this.downloadSelectedBtn.addEventListener('click', () => this.handleDownloadSelected());
+        this.bookmarkSearchInput.addEventListener('input', () => this.filterBookmarks());
+        this.domainFilter.addEventListener('change', () => this.filterBookmarks());
     }
     
     async handleConvert() {
@@ -298,6 +331,11 @@ class LinkPub {
         document.querySelectorAll('.tab-content').forEach(content => {
             content.classList.toggle('active', content.id === tabName + 'Tab');
         });
+        
+        // Load Karakeep bookmarks if switching to Karakeep tab
+        if (tabName === 'karakeep' && this.karakeepEnabled && this.bookmarks.length === 0) {
+            this.loadKarakeepBookmarks();
+        }
     }
     
     // Collection Management
@@ -879,6 +917,345 @@ class LinkPub {
         });
         
         return await zip.generateAsync({type: 'blob'});
+    }
+    
+    // Karakeep Integration
+    async checkKarakeepStatus() {
+        try {
+            const response = await fetch('/api/karakeep/status');
+            const data = await response.json();
+            this.karakeepEnabled = data.enabled;
+            
+            if (this.karakeepEnabled) {
+                this.karakeepTabBtn.style.display = 'block';
+                console.log('Karakeep integration enabled');
+            } else {
+                console.log('Karakeep integration disabled - check .env configuration');
+            }
+        } catch (error) {
+            console.error('Failed to check Karakeep status:', error);
+        }
+    }
+    
+    async loadKarakeepBookmarks() {
+        this.showKarakeepLoading(true);
+        this.showKarakeepError(false);
+        
+        try {
+            const response = await fetch('/api/karakeep/bookmarks');
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            const data = await response.json();
+            this.bookmarks = data.bookmarks || [];
+            this.filteredBookmarks = [...this.bookmarks];
+            
+            this.renderBookmarks();
+            this.updateDomainFilter();
+            this.showKarakeepControls(true);
+            
+            console.log(`Loaded ${this.bookmarks.length} bookmarks from Karakeep`);
+            
+        } catch (error) {
+            console.error('Failed to load bookmarks:', error);
+            this.showKarakeepError(true, error.message);
+        } finally {
+            this.showKarakeepLoading(false);
+        }
+    }
+    
+    renderBookmarks() {
+        this.bookmarksGrid.innerHTML = '';
+        
+        this.filteredBookmarks.forEach(bookmark => {
+            const card = this.createBookmarkCard(bookmark);
+            this.bookmarksGrid.appendChild(card);
+        });
+        
+        this.updateSelectedCount();
+    }
+    
+    createBookmarkCard(bookmark) {
+        const card = document.createElement('div');
+        card.className = 'bookmark-card';
+        card.dataset.id = bookmark.id;
+        
+        const isSelected = this.selectedBookmarks.has(bookmark.id);
+        if (isSelected) {
+            card.classList.add('selected');
+        }
+        
+        const formattedDate = bookmark.created_at ? 
+            new Date(bookmark.created_at).toLocaleDateString() : '';
+        
+        const publishedDate = bookmark.datePublished ? 
+            new Date(bookmark.datePublished).toLocaleDateString() : '';
+        
+        const tags = bookmark.tags && bookmark.tags.length > 0 ? 
+            `<div class="bookmark-tags">${bookmark.tags.map(tag => 
+                `<span class="bookmark-tag">${this.escapeHtml(tag)}</span>`
+            ).join('')}</div>` : '';
+        
+        const authorInfo = bookmark.author && bookmark.publisher ? 
+            `<div class="bookmark-author">by ${this.escapeHtml(bookmark.author)} • ${this.escapeHtml(bookmark.publisher)}</div>` :
+            bookmark.author ? `<div class="bookmark-author">by ${this.escapeHtml(bookmark.author)}</div>` :
+            bookmark.publisher ? `<div class="bookmark-author">${this.escapeHtml(bookmark.publisher)}</div>` : '';
+        
+        card.innerHTML = `
+            <div class="bookmark-status" style="display: none;"></div>
+            <div class="bookmark-header">
+                <input type="checkbox" class="bookmark-checkbox" ${isSelected ? 'checked' : ''}>
+                <div class="bookmark-content">
+                    <div class="bookmark-title">${this.escapeHtml(bookmark.title)}</div>
+                    <div class="bookmark-url">${this.escapeHtml(bookmark.url)}</div>
+                    ${bookmark.description ? `<div class="bookmark-description">${this.escapeHtml(bookmark.description)}</div>` : ''}
+                    ${authorInfo}
+                    <div class="bookmark-meta">
+                        <span class="bookmark-domain">${this.escapeHtml(bookmark.domain)}</span>
+                        ${publishedDate ? `<span class="bookmark-date">Published: ${publishedDate}</span>` : ''}
+                        ${formattedDate ? `<span class="bookmark-date">Saved: ${formattedDate}</span>` : ''}
+                        ${bookmark.favourited ? `<span class="bookmark-favourite">⭐ Favourited</span>` : ''}
+                    </div>
+                    ${tags}
+                </div>
+            </div>
+        `;
+        
+        // Add click event listeners
+        card.addEventListener('click', (e) => {
+            if (e.target.type !== 'checkbox') {
+                this.toggleBookmarkSelection(bookmark.id);
+            }
+        });
+        
+        const checkbox = card.querySelector('.bookmark-checkbox');
+        checkbox.addEventListener('change', () => {
+            this.toggleBookmarkSelection(bookmark.id);
+        });
+        
+        return card;
+    }
+    
+    toggleBookmarkSelection(bookmarkId) {
+        if (this.selectedBookmarks.has(bookmarkId)) {
+            this.selectedBookmarks.delete(bookmarkId);
+        } else {
+            this.selectedBookmarks.add(bookmarkId);
+        }
+        
+        // Update UI
+        const card = this.bookmarksGrid.querySelector(`[data-id="${bookmarkId}"]`);
+        if (card) {
+            const checkbox = card.querySelector('.bookmark-checkbox');
+            const isSelected = this.selectedBookmarks.has(bookmarkId);
+            
+            card.classList.toggle('selected', isSelected);
+            checkbox.checked = isSelected;
+        }
+        
+        this.updateSelectedCount();
+    }
+    
+    selectAllBookmarks() {
+        this.filteredBookmarks.forEach(bookmark => {
+            this.selectedBookmarks.add(bookmark.id);
+        });
+        this.renderBookmarks();
+    }
+    
+    selectNoneBookmarks() {
+        this.selectedBookmarks.clear();
+        this.renderBookmarks();
+    }
+    
+    updateSelectedCount() {
+        const count = this.selectedBookmarks.size;
+        this.selectedBookmarksCount.textContent = count;
+        this.downloadSelectedBtn.disabled = count === 0;
+    }
+    
+    filterBookmarks() {
+        const searchTerm = this.bookmarkSearchInput.value.toLowerCase();
+        const selectedDomain = this.domainFilter.value;
+        
+        this.filteredBookmarks = this.bookmarks.filter(bookmark => {
+            const matchesSearch = !searchTerm || 
+                bookmark.title.toLowerCase().includes(searchTerm) ||
+                bookmark.url.toLowerCase().includes(searchTerm) ||
+                bookmark.description.toLowerCase().includes(searchTerm);
+            
+            const matchesDomain = !selectedDomain || bookmark.domain === selectedDomain;
+            
+            return matchesSearch && matchesDomain;
+        });
+        
+        this.renderBookmarks();
+    }
+    
+    updateDomainFilter() {
+        const domains = [...new Set(this.bookmarks.map(b => b.domain))].sort();
+        
+        this.domainFilter.innerHTML = '<option value="">All domains</option>';
+        domains.forEach(domain => {
+            const option = document.createElement('option');
+            option.value = domain;
+            option.textContent = domain;
+            this.domainFilter.appendChild(option);
+        });
+    }
+    
+    async handleDownloadSelected() {
+        if (this.selectedBookmarks.size === 0) return;
+        
+        const selectedBookmarksList = this.bookmarks.filter(b => 
+            this.selectedBookmarks.has(b.id)
+        );
+        
+        const title = this.karakeepCollectionTitle.value.trim() || 
+            `Karakeep Collection (${selectedBookmarksList.length} articles)`;
+        const author = this.karakeepCollectionAuthor.value.trim() || 'Karakeep';
+        
+        // Reset all bookmark statuses
+        this.resetAllBookmarkStatuses();
+        this.showProcessingBookmarks(true);
+        
+        try {
+            const articles = [];
+            
+            for (let i = 0; i < selectedBookmarksList.length; i++) {
+                const bookmark = selectedBookmarksList[i];
+                
+                // Update progress
+                this.updateKarakeepProgress(i, selectedBookmarksList.length);
+                this.processingText.textContent = `Processing: ${bookmark.title}`;
+                
+                // Set bookmark status to processing
+                this.updateBookmarkStatus(bookmark.id, 'processing');
+                
+                try {
+                    const article = await this.extractArticle(bookmark.url);
+                    article.id = bookmark.id;
+                    article.title = bookmark.title; // Use bookmark title
+                    articles.push(article);
+                    
+                    // Mark as successful
+                    this.updateBookmarkStatus(bookmark.id, 'success');
+                    
+                } catch (error) {
+                    console.error(`Failed to extract ${bookmark.url}:`, error);
+                    
+                    // Mark as failed
+                    this.updateBookmarkStatus(bookmark.id, 'error');
+                    
+                    // Continue with other bookmarks
+                }
+                
+                // Small delay to prevent overwhelming the server
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+            
+            this.updateKarakeepProgress(selectedBookmarksList.length, selectedBookmarksList.length);
+            
+            if (articles.length === 0) {
+                throw new Error('No articles could be extracted from selected bookmarks');
+            }
+            
+            this.processingText.textContent = 'Generating EPUB...';
+            const epub = await this.generateCollectionEpubWithCover(articles, title, author);
+            this.downloadFile(epub, `${this.sanitizeFilename(title)}.epub`);
+            
+            console.log(`Successfully generated EPUB with ${articles.length} articles`);
+            
+            // Show completion message
+            const successCount = articles.length;
+            const failCount = selectedBookmarksList.length - successCount;
+            
+            if (failCount > 0) {
+                alert(`EPUB generated! Successfully processed ${successCount} articles. ${failCount} articles failed to extract.`);
+            }
+            
+        } catch (error) {
+            console.error('Failed to process selected bookmarks:', error);
+            alert(`Failed to generate EPUB: ${error.message}`);
+        } finally {
+            this.showProcessingBookmarks(false);
+            
+            // Auto-hide status indicators after 3 seconds
+            setTimeout(() => {
+                this.resetAllBookmarkStatuses();
+            }, 3000);
+        }
+    }
+    
+    showKarakeepLoading(show) {
+        this.karakeepLoading.style.display = show ? 'block' : 'none';
+    }
+    
+    showKarakeepError(show, message = '') {
+        this.karakeepError.style.display = show ? 'block' : 'none';
+        if (show && message) {
+            this.karakeepError.querySelector('.error-message').textContent = 
+                `Failed to load bookmarks: ${message}`;
+        }
+    }
+    
+    showKarakeepControls(show) {
+        this.bookmarksControls.style.display = show ? 'block' : 'none';
+    }
+    
+    showProcessingBookmarks(show) {
+        this.processingBookmarks.style.display = show ? 'block' : 'none';
+    }
+    
+    updateKarakeepProgress(current, total) {
+        const percentage = total > 0 ? (current / total) * 100 : 0;
+        this.karakeepProgressFill.style.width = percentage + '%';
+        this.karakeepProgressText.textContent = `${current} / ${total}`;
+    }
+    
+    // Bookmark Status Management
+    updateBookmarkStatus(bookmarkId, status, message = '') {
+        const card = this.bookmarksGrid.querySelector(`[data-id="${bookmarkId}"]`);
+        if (!card) return;
+        
+        const statusEl = card.querySelector('.bookmark-status');
+        
+        // Remove all status classes
+        card.classList.remove('processing', 'success', 'error');
+        statusEl.classList.remove('processing', 'success', 'error');
+        
+        if (status === 'none') {
+            statusEl.style.display = 'none';
+            return;
+        }
+        
+        // Add new status
+        card.classList.add(status);
+        statusEl.classList.add(status);
+        statusEl.style.display = 'block';
+        
+        // Set status text
+        switch (status) {
+            case 'processing':
+                statusEl.textContent = 'Processing...';
+                break;
+            case 'success':
+                statusEl.textContent = 'Done';
+                break;
+            case 'error':
+                statusEl.textContent = 'Failed';
+                break;
+        }
+    }
+    
+    resetAllBookmarkStatuses() {
+        const cards = this.bookmarksGrid.querySelectorAll('.bookmark-card');
+        cards.forEach(card => {
+            const bookmarkId = card.dataset.id;
+            this.updateBookmarkStatus(bookmarkId, 'none');
+        });
     }
 }
 
