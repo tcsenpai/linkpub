@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  linkpub:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: linkpub
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      # Karakeep integration (optional)
+      # Uncomment and set your values:
+      # - KARAKEEP_KEY=your_api_key_here
+      # - KARAKEEP_URL=https://try.karakeep.app/api/v1
+    env_file:
+      - .env
+    restart: unless-stopped
+    volumes:
+      # Optional: Mount .env file if you prefer file-based config
+      - ./.env:/app/.env:ro
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/karakeep/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - linkpub-network
+
+networks:
+  linkpub-network:
+    driver: bridge
