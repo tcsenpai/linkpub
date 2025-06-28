@@ -39,8 +39,66 @@ header p {
 main {
     background: white;
     border-radius: 12px;
-    padding: 2rem;
+    padding: 0;
     box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+/* Tab Navigation */
+.tab-nav {
+    display: flex;
+    background: #f8f9fa;
+    border-bottom: 1px solid #e1e5e9;
+}
+
+.tab-btn {
+    flex: 1;
+    padding: 1rem 2rem;
+    background: transparent;
+    border: none;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s;
+    color: #6c757d;
+    position: relative;
+}
+
+.tab-btn:hover {
+    background: rgba(102, 126, 234, 0.1);
+    color: #667eea;
+}
+
+.tab-btn.active {
+    background: white;
+    color: #667eea;
+    font-weight: 600;
+}
+
+.tab-btn.active::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+/* Tab Content */
+.tab-content {
+    display: none;
+    padding: 2rem;
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .input-section {
@@ -164,6 +222,350 @@ main {
     background: #219a52;
 }
 
+/* Collection Tab Styles */
+.collection-header {
+    margin-bottom: 2rem;
+}
+
+.collection-meta {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 1rem;
+}
+
+.collection-title-input,
+.collection-author-input {
+    padding: 1rem;
+    border: 2px solid #e1e5e9;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: border-color 0.3s;
+}
+
+.collection-title-input:focus,
+.collection-author-input:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.collection-title-input {
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+
+.add-article-section {
+    margin-bottom: 2rem;
+}
+
+.bulk-input-section {
+    margin-top: 1rem;
+}
+
+.secondary-btn {
+    padding: 0.5rem 1rem;
+    background: #6c757d;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.secondary-btn:hover {
+    background: #5a6268;
+}
+
+.primary-btn {
+    padding: 0.5rem 1rem;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.primary-btn:hover {
+    transform: translateY(-1px);
+}
+
+#bulkUrlInput {
+    width: 100%;
+    min-height: 120px;
+    margin: 1rem 0;
+    padding: 1rem;
+    border: 2px solid #e1e5e9;
+    border-radius: 8px;
+    font-family: inherit;
+    resize: vertical;
+}
+
+.bulk-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-start;
+}
+
+.plus-icon {
+    font-size: 1.2rem;
+    margin-right: 0.5rem;
+}
+
+#addArticleBtn {
+    display: flex;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+#addArticleBtn:hover {
+    transform: translateY(-2px);
+}
+
+/* Collection Loading */
+.collection-loading {
+    text-align: center;
+    padding: 2rem;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 8px;
+    background: #e1e5e9;
+    border-radius: 4px;
+    margin: 1rem 0;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    width: 0%;
+    transition: width 0.3s ease;
+}
+
+.progress-text {
+    font-size: 0.9rem;
+    color: #6c757d;
+    margin-top: 0.5rem;
+}
+
+/* Articles List */
+.articles-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #e1e5e9;
+}
+
+.collection-actions {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.download-options {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+/* Dropdown Styles */
+.dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.dropdown-btn {
+    position: relative;
+}
+
+.dropdown-content {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: 100%;
+    background: white;
+    min-width: 200px;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+    border: 1px solid #e1e5e9;
+    border-radius: 6px;
+    z-index: 1000;
+    margin-top: 0.5rem;
+}
+
+.dropdown:hover .dropdown-content {
+    display: block;
+}
+
+.dropdown-content button {
+    color: #333;
+    padding: 0.75rem 1rem;
+    text-decoration: none;
+    display: block;
+    width: 100%;
+    text-align: left;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background-color 0.3s;
+}
+
+.dropdown-content button:first-child {
+    border-radius: 6px 6px 0 0;
+}
+
+.dropdown-content button:last-child {
+    border-radius: 0 0 6px 6px;
+}
+
+.dropdown-content button:hover {
+    background: #f8f9fa;
+}
+
+.danger-btn {
+    padding: 0.5rem 1rem;
+    background: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.danger-btn:hover {
+    background: #c82333;
+}
+
+.articles-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.article-item {
+    display: flex;
+    align-items: center;
+    padding: 1rem;
+    border: 1px solid #e1e5e9;
+    border-radius: 8px;
+    background: #f8f9fa;
+    transition: all 0.3s;
+}
+
+.article-item:hover {
+    border-color: #667eea;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
+}
+
+.article-item.processing {
+    border-color: #ffc107;
+    background: #fff3cd;
+}
+
+.article-item.success {
+    border-color: #28a745;
+    background: #d4edda;
+}
+
+.article-item.error {
+    border-color: #dc3545;
+    background: #f8d7da;
+}
+
+.drag-handle {
+    cursor: grab;
+    color: #6c757d;
+    margin-right: 1rem;
+    font-size: 1.2rem;
+}
+
+.drag-handle:active {
+    cursor: grabbing;
+}
+
+.article-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.article-title {
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+    color: #333;
+}
+
+.article-url {
+    font-size: 0.9rem;
+    color: #6c757d;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.article-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-left: 1rem;
+}
+
+.article-btn {
+    padding: 0.25rem 0.5rem;
+    border: none;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.edit-btn {
+    background: #17a2b8;
+    color: white;
+}
+
+.edit-btn:hover {
+    background: #138496;
+}
+
+.remove-btn {
+    background: #dc3545;
+    color: white;
+}
+
+.remove-btn:hover {
+    background: #c82333;
+}
+
+/* Drag and Drop Styles */
+.sortable-ghost {
+    opacity: 0.4;
+    background: #f0f8ff;
+    border: 2px dashed #667eea;
+}
+
+.sortable-chosen {
+    transform: scale(1.02);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.sortable-drag {
+    transform: rotate(5deg);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
 @media (max-width: 600px) {
     .container {
         padding: 1rem;
@@ -177,7 +579,49 @@ main {
         flex-direction: column;
     }
     
-    #convertBtn {
+    #convertBtn, #addArticleBtn {
         width: 100%;
+    }
+    
+    .collection-meta {
+        grid-template-columns: 1fr;
+    }
+    
+    .articles-header {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: stretch;
+    }
+    
+    .collection-actions {
+        justify-content: space-between;
+    }
+    
+    .download-options {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .dropdown-content {
+        position: static;
+        display: block;
+        box-shadow: none;
+        border: none;
+        margin-top: 0;
+    }
+    
+    .article-item {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.5rem;
+    }
+    
+    .drag-handle {
+        display: none;
+    }
+    
+    .article-actions {
+        margin-left: 0;
+        justify-content: flex-end;
     }
 }

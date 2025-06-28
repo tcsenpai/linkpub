@@ -14,28 +14,98 @@
         </header>
 
         <main>
-            <div class="input-section">
-                <div class="input-group">
-                    <input type="url" id="urlInput" placeholder="Enter article URL..." required>
-                    <button id="convertBtn">Convert to EPUB</button>
+            <!-- Tab Navigation -->
+            <div class="tab-nav">
+                <button class="tab-btn active" data-tab="single">Single Article</button>
+                <button class="tab-btn" data-tab="collection">Collection</button>
+            </div>
+
+            <!-- Single Article Tab -->
+            <div class="tab-content active" id="singleTab">
+                <div class="input-section">
+                    <div class="input-group">
+                        <input type="url" id="urlInput" placeholder="Enter article URL..." required>
+                        <button id="convertBtn">Convert to EPUB</button>
+                    </div>
+                    <div class="error-message" id="errorMessage"></div>
                 </div>
-                <div class="error-message" id="errorMessage"></div>
+
+                <div class="loading" id="loading" style="display: none;">
+                    <div class="spinner"></div>
+                    <p>Processing article...</p>
+                </div>
+
+                <div class="preview-section" id="previewSection" style="display: none;">
+                    <h3>Preview</h3>
+                    <div class="article-preview" id="articlePreview"></div>
+                    <button id="downloadBtn" class="download-btn">Download EPUB</button>
+                </div>
             </div>
 
-            <div class="loading" id="loading" style="display: none;">
-                <div class="spinner"></div>
-                <p>Processing article...</p>
-            </div>
+            <!-- Collection Tab -->
+            <div class="tab-content" id="collectionTab">
+                <div class="collection-header">
+                    <div class="collection-meta">
+                        <input type="text" id="collectionTitle" placeholder="Collection Title" class="collection-title-input">
+                        <input type="text" id="collectionAuthor" placeholder="Author (optional)" class="collection-author-input">
+                    </div>
+                </div>
 
-            <div class="preview-section" id="previewSection" style="display: none;">
-                <h3>Preview</h3>
-                <div class="article-preview" id="articlePreview"></div>
-                <button id="downloadBtn" class="download-btn">Download EPUB</button>
+                <div class="add-article-section">
+                    <div class="input-group">
+                        <input type="url" id="collectionUrlInput" placeholder="Enter article URL to add..." required>
+                        <button id="addArticleBtn">
+                            <span class="plus-icon">+</span>
+                            Add Article
+                        </button>
+                    </div>
+                    <div class="bulk-input-section">
+                        <button id="bulkInputBtn" class="secondary-btn">Bulk Add URLs</button>
+                        <textarea id="bulkUrlInput" placeholder="Paste multiple URLs (one per line)..." style="display: none;"></textarea>
+                        <div class="bulk-actions" style="display: none;">
+                            <button id="processBulkBtn" class="primary-btn">Process All</button>
+                            <button id="cancelBulkBtn" class="secondary-btn">Cancel</button>
+                        </div>
+                    </div>
+                    <div class="error-message" id="collectionErrorMessage"></div>
+                </div>
+
+                <div class="collection-loading" id="collectionLoading" style="display: none;">
+                    <div class="spinner"></div>
+                    <p id="loadingText">Processing articles...</p>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <div class="progress-text" id="progressText">0 / 0</div>
+                </div>
+
+                <div class="articles-list" id="articlesList">
+                    <div class="articles-header" style="display: none;">
+                        <h3>Articles in Collection (<span id="articlesCount">0</span>)</h3>
+                        <div class="collection-actions">
+                            <button id="clearAllBtn" class="danger-btn">Clear All</button>
+                            <div class="download-options">
+                                <button id="downloadCollectionBtn" class="download-btn" disabled>Download Collection EPUB</button>
+                                <div class="dropdown">
+                                    <button id="exportOptionsBtn" class="secondary-btn dropdown-btn" disabled>
+                                        Export Options ▼
+                                    </button>
+                                    <div class="dropdown-content">
+                                        <button id="downloadIndividualBtn">Download Individual EPUBs</button>
+                                        <button id="generateCoverBtn">Generate Cover Page</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="articles-container" id="articlesContainer"></div>
+                </div>
             </div>
         </main>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
