@@ -60,6 +60,95 @@ app.use(session({
 }));
 
 // =============================================================================
+// INITIALIZATION FUNCTIONS
+// =============================================================================
+
+/**
+ * Initialize application - create required directories and default files
+ */
+async function initializeApp() {
+    try {
+        console.log('🔧 Initializing application...');
+        
+        // Determine if running in Docker (check for /app/data mount)
+        const isDocker = await fs.access('/app/data').then(() => true).catch(() => false);
+        const dataDir = isDocker ? '/app/data' : __dirname;
+        
+        console.log(`📁 Using data directory: ${dataDir}`);
+        
+        // Create data directory if needed (Docker mode)
+        if (isDocker) {
+            try {
+                await fs.mkdir(dataDir, { recursive: true });
+            } catch (error) {
+                if (error.code !== 'EEXIST') {
+                    console.error('❌ Failed to create data directory:', error.message);
+                }
+            }
+        }
+        
+        // Create epubs directory if it doesn't exist
+        const epubsDir = path.join(dataDir, 'epubs');
+        try {
+            await fs.access(epubsDir);
+        } catch {
+            await fs.mkdir(epubsDir, { recursive: true });
+            console.log('📁 Created epubs directory');
+        }
+        
+        // Set global paths for Docker compatibility
+        global.USERS_FILE = path.join(dataDir, 'users.json');
+        global.URLS_FILE = path.join(dataDir, 'converted_urls.json');
+        global.EPUBS_DIR = epubsDir;
+        
+        // Initialize users.json if it doesn't exist
+        try {
+            await fs.access(global.USERS_FILE);
+        } catch {
+            try {
+                // Try to copy from example file
+                const exampleContent = await fs.readFile('users.json.example', 'utf8');
+                await fs.writeFile(global.USERS_FILE, exampleContent);
+                console.log('👥 Created users.json from example file');
+            } catch {
+                // Create default users.json if example doesn't exist
+                const defaultUsers = {
+                    users: [
+                        {
+                            id: "admin",
+                            username: "admin",
+                            password: "changeme",
+                            theme: "light",
+                            preferences: {
+                                trackUrls: true,
+                                defaultAuthor: "LinkPub",
+                                autoSave: true
+                            }
+                        }
+                    ]
+                };
+                await fs.writeFile(global.USERS_FILE, JSON.stringify(defaultUsers, null, 2));
+                console.log('👥 Created default users.json (username: admin, password: changeme)');
+            }
+        }
+        
+        // Initialize converted_urls.json if it doesn't exist
+        try {
+            await fs.access(global.URLS_FILE);
+        } catch {
+            const defaultUrls = { urls: [] };
+            await fs.writeFile(global.URLS_FILE, JSON.stringify(defaultUrls, null, 2));
+            console.log('📝 Created converted_urls.json');
+        }
+        
+        console.log('✅ Application initialization complete');
+    } catch (error) {
+        console.error('❌ Failed to initialize application:', error.message);
+        process.exit(1);
+    }
+}
+
+// =============================================================================
 // HELPER FUNCTIONS
 // =============================================================================
 
@@ -69,7 +158,8 @@ app.use(session({
  */
 async function loadUsers() {
     try {
-        const data = await fs.readFile('users.json', 'utf8');
+        const userFile = global.USERS_FILE || 'users.json';
+        const data = await fs.readFile(userFile, 'utf8');
         return JSON.parse(data);
     } catch (error) {
         console.error('❌ Error loading users:', error.message);
@@ -84,11 +174,136 @@ async function loadUsers() {
  */
 async function saveUsers(userData) {
     try {
-        await fs.writeFile('users.json', JSON.stringify(userData, null, 2));
+        const userFile = global.USERS_FILE || 'users.json';
+        await fs.writeFile(userFile, JSON.stringify(userData, null, 2));
         return true;
     } catch (error) {
         console.error('❌ Error saving users:', error.message);
         return false;
+    }
+}
+
+/**
+ * Load converted URLs from JSON file
+ * @returns {Promise<Object>} Converted URLs data object
+ */
+async function loadConvertedUrls() {
+    try {
+        const urlsFile = global.URLS_FILE || 'converted_urls.json';
+        const data = await fs.readFile(urlsFile, 'utf8');
+        return JSON.parse(data);
+    } catch (error) {
+        console.error('❌ Error loading converted URLs:', error.message);
+        return { urls: [] };
+    }
+}
+
+/**
+ * Save converted URLs to JSON file
+ * @param {Object} urlsData - URLs data object to save
+ * @returns {Promise<boolean>} Success status
+ */
+async function saveConvertedUrls(urlsData) {
+    try {
+        const urlsFile = global.URLS_FILE || 'converted_urls.json';
+        await fs.writeFile(urlsFile, JSON.stringify(urlsData, null, 2));
+        return true;
+    } catch (error) {
+        console.error('❌ Error saving converted URLs:', error.message);
+        return false;
+    }
+}
+
+/**
+ * Add a URL to the converted URLs tracking
+ * @param {string} userId - User ID
+ * @param {string} url - URL that was converted
+ * @param {string} title - Article title
+ * @param {string} siteName - Site name
+ * @param {string} method - Conversion method (single/collection/karakeep)
+ */
+async function trackConvertedUrl(userId, url, title, siteName, method) {
+    try {
+        const urlsData = await loadConvertedUrls();
+        
+        const urlEntry = {
+            id: generateUniqueId(),
+            userId,
+            url,
+            title,
+            siteName,
+            method,
+            convertedAt: new Date().toISOString()
+        };
+        
+        // Remove existing entry for same URL by same user to avoid duplicates
+        urlsData.urls = urlsData.urls.filter(entry => !(entry.url === url && entry.userId === userId));
+        
+        urlsData.urls.push(urlEntry);
+        
+        // Keep only last 1000 entries per user to prevent unlimited growth
+        const userUrls = urlsData.urls.filter(entry => entry.userId === userId);
+        if (userUrls.length > 1000) {
+            const urlsToKeep = userUrls.sort((a, b) => new Date(b.convertedAt) - new Date(a.convertedAt)).slice(0, 1000);
+            urlsData.urls = urlsData.urls.filter(entry => entry.userId !== userId).concat(urlsToKeep);
+        }
+        
+        await saveConvertedUrls(urlsData);
+        console.log(`📝 Tracked URL conversion: ${title} by user ${userId}`);
+    } catch (error) {
+        console.error('❌ Error tracking converted URL:', error.message);
+    }
+}
+
+/**
+ * Generate a unique ID
+ * @returns {string} Unique ID
+ */
+function generateUniqueId() {
+    return Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
+}
+
+/**
+ * Generate a secure API key
+ * @returns {string} API key
+ */
+function generateApiKey() {
+    const crypto = require('crypto');
+    return 'lp_' + crypto.randomBytes(32).toString('hex');
+}
+
+/**
+ * API key authentication middleware
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Next middleware function
+ */
+async function requireApiKey(req, res, next) {
+    const apiKey = req.headers['x-api-key'] || req.query.apiKey;
+    
+    if (!apiKey) {
+        return res.status(401).json({ error: 'API key required' });
+    }
+    
+    try {
+        const userData = await loadUsers();
+        const user = userData.users.find(u => u.preferences?.apiKey === apiKey);
+        
+        if (!user) {
+            return res.status(401).json({ error: 'Invalid API key' });
+        }
+        
+        // Set user context for the request
+        req.apiUser = {
+            id: user.id,
+            username: user.username,
+            preferences: user.preferences || {}
+        };
+        
+        next();
+    } catch (error) {
+        console.error('❌ API key validation error:', error.message);
+        res.status(500).json({ error: 'Internal server error' });
     }
 }
 
@@ -98,7 +313,8 @@ async function saveUsers(userData) {
  * @returns {Promise<string|null>} Directory path or null if error
  */
 async function ensureUserEpubsDir(userId) {
-    const dir = path.join(__dirname, 'epubs', userId);
+    const epubsDir = global.EPUBS_DIR || path.join(__dirname, 'epubs');
+    const dir = path.join(epubsDir, userId);
     try {
         await fs.mkdir(dir, { recursive: true });
         return dir;
@@ -115,7 +331,8 @@ async function ensureUserEpubsDir(userId) {
  */
 async function getUserEpubs(userId) {
     try {
-        const dir = path.join(__dirname, 'epubs', userId);
+        const epubsDir = global.EPUBS_DIR || path.join(__dirname, 'epubs');
+        const dir = path.join(epubsDir, userId);
         const files = await fs.readdir(dir);
         const epubs = [];
         
@@ -263,6 +480,41 @@ app.get('/api/auth/me', (req, res) => {
 // =============================================================================
 
 /**
+ * Update user preferences
+ */
+app.put('/api/user/preferences', requireAuth, async (req, res) => {
+    const { preferences } = req.body;
+    
+    if (!preferences || typeof preferences !== 'object') {
+        return res.status(400).json({ error: 'Invalid preferences object' });
+    }
+    
+    try {
+        const userData = await loadUsers();
+        const userIndex = userData.users.findIndex(u => u.id === req.session.user.id);
+        
+        if (userIndex === -1) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        // Update preferences in file and session
+        userData.users[userIndex].preferences = { 
+            ...userData.users[userIndex].preferences, 
+            ...preferences 
+        };
+        await saveUsers(userData);
+        req.session.user.preferences = userData.users[userIndex].preferences;
+        
+        console.log(`⚙️ Preferences updated for user: ${req.session.user.username}`);
+        
+        res.json({ success: true, preferences: req.session.user.preferences });
+    } catch (error) {
+        console.error('❌ Preferences update error:', error.message);
+        res.status(500).json({ error: 'Failed to update preferences' });
+    }
+});
+
+/**
  * Update user theme preference
  */
 app.put('/api/user/theme', requireAuth, async (req, res) => {
@@ -292,6 +544,105 @@ app.put('/api/user/theme', requireAuth, async (req, res) => {
     } catch (error) {
         console.error('❌ Theme update error:', error.message);
         res.status(500).json({ error: 'Failed to update theme' });
+    }
+});
+
+/**
+ * Get user's converted URLs history
+ */
+app.get('/api/user/converted-urls', requireAuth, async (req, res) => {
+    try {
+        const urlsData = await loadConvertedUrls();
+        const userUrls = urlsData.urls
+            .filter(entry => entry.userId === req.session.user.id)
+            .sort((a, b) => new Date(b.convertedAt) - new Date(a.convertedAt));
+        
+        res.json({ urls: userUrls });
+    } catch (error) {
+        console.error('❌ Error fetching converted URLs:', error.message);
+        res.status(500).json({ error: 'Failed to fetch converted URLs' });
+    }
+});
+
+/**
+ * Clear user's converted URLs history
+ */
+app.delete('/api/user/converted-urls', requireAuth, async (req, res) => {
+    try {
+        const urlsData = await loadConvertedUrls();
+        urlsData.urls = urlsData.urls.filter(entry => entry.userId !== req.session.user.id);
+        await saveConvertedUrls(urlsData);
+        
+        console.log(`🗑️ Cleared URL history for user: ${req.session.user.username}`);
+        res.json({ success: true, message: 'URL history cleared' });
+    } catch (error) {
+        console.error('❌ Error clearing converted URLs:', error.message);
+        res.status(500).json({ error: 'Failed to clear URL history' });
+    }
+});
+
+/**
+ * Generate/regenerate user API key
+ */
+app.post('/api/user/api-key', requireAuth, async (req, res) => {
+    try {
+        const userData = await loadUsers();
+        const userIndex = userData.users.findIndex(u => u.id === req.session.user.id);
+        
+        if (userIndex === -1) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        // Generate new API key
+        const apiKey = generateApiKey();
+        
+        // Update user preferences
+        if (!userData.users[userIndex].preferences) {
+            userData.users[userIndex].preferences = {};
+        }
+        userData.users[userIndex].preferences.apiKey = apiKey;
+        
+        await saveUsers(userData);
+        req.session.user.preferences = userData.users[userIndex].preferences;
+        
+        console.log(`🔑 API key generated for user: ${req.session.user.username}`);
+        
+        res.json({ success: true, apiKey });
+    } catch (error) {
+        console.error('❌ API key generation error:', error.message);
+        res.status(500).json({ error: 'Failed to generate API key' });
+    }
+});
+
+/**
+ * Get user's API key
+ */
+app.get('/api/user/api-key', requireAuth, async (req, res) => {
+    try {
+        const userData = await loadUsers();
+        const user = userData.users.find(u => u.id === req.session.user.id);
+        
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        const apiKey = user.preferences?.apiKey;
+        
+        if (!apiKey) {
+            return res.json({ hasApiKey: false });
+        }
+        
+        // Return masked API key for security
+        const maskedKey = apiKey.substring(0, 8) + '*'.repeat(apiKey.length - 8);
+        
+        res.json({ 
+            hasApiKey: true, 
+            apiKey: maskedKey,
+            fullKey: apiKey // Only return full key to authenticated user
+        });
+    } catch (error) {
+        console.error('❌ API key fetch error:', error.message);
+        res.status(500).json({ error: 'Failed to fetch API key' });
     }
 });
 
@@ -397,6 +748,17 @@ app.post('/api/extract', requireAuth, async (req, res) => {
                 wordCount: article.textContent ? article.textContent.split(/\s+/).length : 0
             };
             
+            // Track the URL conversion if user has tracking enabled
+            if (req.session.user && req.session.user.preferences?.trackUrls !== false) {
+                await trackConvertedUrl(
+                    req.session.user.id, 
+                    url, 
+                    result.title, 
+                    result.siteName, 
+                    'extraction'
+                );
+            }
+            
             console.log(`Successfully extracted: "${result.title}" (${result.wordCount} words)`);
             return res.json(result);
             
@@ -501,7 +863,8 @@ app.get('/api/epubs/:filename', requireAuth, async (req, res) => {
             return res.status(400).json({ error: 'Invalid filename' });
         }
         
-        const epubPath = path.join(__dirname, 'epubs', userId, filename);
+        const epubsDir = global.EPUBS_DIR || path.join(__dirname, 'epubs');
+        const epubPath = path.join(epubsDir, userId, filename);
         
         // Check if file exists and is accessible
         await fs.access(epubPath);
@@ -528,8 +891,9 @@ app.delete('/api/epubs/:filename', requireAuth, async (req, res) => {
             return res.status(400).json({ error: 'Invalid filename' });
         }
         
-        const epubPath = path.join(__dirname, 'epubs', userId, filename);
-        const metadataPath = path.join(__dirname, 'epubs', userId, filename.replace('.epub', '.json'));
+        const epubsDir = global.EPUBS_DIR || path.join(__dirname, 'epubs');
+        const epubPath = path.join(epubsDir, userId, filename);
+        const metadataPath = path.join(epubsDir, userId, filename.replace('.epub', '.json'));
         
         // Delete EPUB file
         await fs.unlink(epubPath);
@@ -548,6 +912,313 @@ app.delete('/api/epubs/:filename', requireAuth, async (req, res) => {
         console.error('❌ Error deleting EPUB:', error.message);
         res.status(500).json({ error: 'Failed to delete EPUB' });
     }
+});
+
+// =============================================================================
+// PROGRAMMATIC API ROUTES (API Key Authentication)
+// =============================================================================
+
+/**
+ * Extract article content from URL (programmatic access)
+ * @param {string} url - URL to extract
+ * @returns {Promise<Object>} Article data
+ */
+async function extractArticleForApi(url) {
+    const userAgents = [
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    ];
+    
+    const domain = new URL(url).hostname;
+    
+    for (let i = 0; i < userAgents.length; i++) {
+        try {
+            const headers = {
+                'User-Agent': userAgents[i],
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Accept-Encoding': 'gzip, deflate, br',
+                'Connection': 'keep-alive'
+            };
+            
+            const response = await fetch(url, {
+                headers,
+                redirect: 'follow',
+                signal: AbortSignal.timeout(15000)
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            const html = await response.text();
+            
+            if (html.length < 100) {
+                throw new Error('Response too short, possible blocking');
+            }
+            
+            const dom = new JSDOM(html, { 
+                url: url,
+                resources: "usable",
+                runScripts: "outside-only"
+            });
+            const document = dom.window.document;
+            
+            const reader = new Readability(document.cloneNode(true));
+            const article = reader.parse();
+            
+            if (!article || !article.content || article.content.length < 100) {
+                throw new Error('Could not extract readable content from this page');
+            }
+            
+            return {
+                title: article.title || 'Untitled Article',
+                content: article.content,
+                excerpt: article.excerpt || '',
+                siteName: article.siteName || domain,
+                url: url,
+                wordCount: article.textContent ? article.textContent.split(/\s+/).length : 0
+            };
+            
+        } catch (error) {
+            if (i === userAgents.length - 1) {
+                throw error;
+            }
+            continue;
+        }
+    }
+}
+
+/**
+ * Generate EPUB from list of URLs (API endpoint)
+ */
+app.post('/api/v1/generate-epub', requireApiKey, async (req, res) => {
+    try {
+        const { urls, title, author, description } = req.body;
+        
+        // Validate input
+        if (!urls || !Array.isArray(urls) || urls.length === 0) {
+            return res.status(400).json({ 
+                error: 'urls array is required and must contain at least one URL' 
+            });
+        }
+        
+        if (urls.length > 50) {
+            return res.status(400).json({ 
+                error: 'Maximum 50 URLs allowed per request' 
+            });
+        }
+        
+        // Validate URLs
+        for (const url of urls) {
+            try {
+                new URL(url);
+            } catch {
+                return res.status(400).json({ 
+                    error: `Invalid URL: ${url}` 
+                });
+            }
+        }
+        
+        const epubTitle = title || `Generated Collection (${urls.length} articles)`;
+        const epubAuthor = author || 'LinkPub API';
+        const epubDescription = description || '';
+        
+        console.log(`📚 API: Generating EPUB for ${urls.length} URLs by user ${req.apiUser.username}`);
+        
+        // Extract articles
+        const articles = [];
+        const errors = [];
+        
+        for (let i = 0; i < urls.length; i++) {
+            const url = urls[i];
+            try {
+                console.log(`📄 API: Extracting ${i + 1}/${urls.length}: ${url}`);
+                const article = await extractArticleForApi(url);
+                articles.push(article);
+                
+                // Track URL conversion if enabled
+                if (req.apiUser.preferences?.trackUrls !== false) {
+                    await trackConvertedUrl(
+                        req.apiUser.id, 
+                        url, 
+                        article.title, 
+                        article.siteName, 
+                        'api'
+                    );
+                }
+            } catch (error) {
+                console.error(`❌ API: Failed to extract ${url}:`, error.message);
+                errors.push({ url, error: error.message });
+            }
+        }
+        
+        if (articles.length === 0) {
+            return res.status(422).json({ 
+                error: 'No articles could be extracted from the provided URLs',
+                errors 
+            });
+        }
+        
+        // Generate EPUB
+        console.log(`📖 API: Generating EPUB with ${articles.length} articles`);
+        const epub = await generateCollectionEpubForApi(articles, epubTitle, epubAuthor, epubDescription);
+        
+        // Set appropriate headers for EPUB download
+        res.setHeader('Content-Type', 'application/epub+zip');
+        res.setHeader('Content-Disposition', `attachment; filename="${epubTitle.replace(/[^a-z0-9\s-_]/gi, '').replace(/\s+/g, '_')}.epub"`);
+        
+        // Send the EPUB file
+        res.send(epub);
+        
+        console.log(`✅ API: EPUB generated successfully for user ${req.apiUser.username}`);
+        
+    } catch (error) {
+        console.error('❌ API: EPUB generation error:', error.message);
+        res.status(500).json({ 
+            error: 'Failed to generate EPUB',
+            details: error.message 
+        });
+    }
+});
+
+/**
+ * Generate collection EPUB for API (returns Buffer)
+ */
+async function generateCollectionEpubForApi(articles, title, author, description) {
+    const JSZip = require('jszip');
+    const zip = new JSZip();
+    
+    zip.file('mimetype', 'application/epub+zip');
+    
+    const metaInf = zip.folder('META-INF');
+    metaInf.file('container.xml', `<?xml version="1.0"?>
+<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
+    <rootfiles>
+        <rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/>
+    </rootfiles>
+</container>`);
+    
+    const oebps = zip.folder('OEBPS');
+    
+    // Generate manifest items for each article
+    const manifestItems = articles.map((article, index) => 
+        `<item id="chapter${index + 1}" href="chapter${index + 1}.html" media-type="application/xhtml+xml"/>`
+    ).join('\n        ');
+    
+    // Generate spine items for each article
+    const spineItems = articles.map((article, index) => 
+        `<itemref idref="chapter${index + 1}"/>`
+    ).join('\n        ');
+    
+    function escapeXml(text) {
+        if (!text || typeof text !== 'string') return '';
+        return text
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&apos;');
+    }
+    
+    function generateUuid() {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+            const r = Math.random() * 16 | 0;
+            const v = c === 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+        });
+    }
+    
+    oebps.file('content.opf', `<?xml version="1.0" encoding="UTF-8"?>
+<package xmlns="http://www.idpf.org/2007/opf" unique-identifier="BookId" version="2.0">
+    <metadata xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:opf="http://www.idpf.org/2007/opf">
+        <dc:identifier id="BookId">${generateUuid()}</dc:identifier>
+        <dc:title>${escapeXml(title)}</dc:title>
+        <dc:creator>${escapeXml(author)}</dc:creator>
+        <dc:language>en</dc:language>
+        <dc:date>${new Date().toISOString().split('T')[0]}</dc:date>
+        ${description ? `<dc:description>${escapeXml(description)}</dc:description>` : ''}
+    </metadata>
+    <manifest>
+        <item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>
+        ${manifestItems}
+    </manifest>
+    <spine toc="ncx">
+        ${spineItems}
+    </spine>
+</package>`);
+    
+    // Generate TOC
+    const navPoints = articles.map((article, index) => `
+        <navPoint id="navpoint-${index + 1}" playOrder="${index + 1}">
+            <navLabel>
+                <text>${escapeXml(article.title)}</text>
+            </navLabel>
+            <content src="chapter${index + 1}.html"/>
+        </navPoint>`).join('');
+    
+    const totalWords = articles.reduce((sum, article) => sum + (article.wordCount || 1000), 0);
+    const estimatedPages = Math.max(1, Math.ceil(totalWords / 250));
+    
+    oebps.file('toc.ncx', `<?xml version="1.0" encoding="UTF-8"?>
+<ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">
+    <head>
+        <meta name="dtb:uid" content="${generateUuid()}"/>
+        <meta name="dtb:depth" content="1"/>
+        <meta name="dtb:totalPageCount" content="${estimatedPages}"/>
+        <meta name="dtb:maxPageNumber" content="${estimatedPages}"/>
+    </head>
+    <docTitle>
+        <text>${escapeXml(title)}</text>
+    </docTitle>
+    <navMap>${navPoints}
+    </navMap>
+</ncx>`);
+    
+    // Generate individual chapter files
+    articles.forEach((article, index) => {
+        oebps.file(`chapter${index + 1}.html`, `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>${escapeXml(article.title)}</title>
+    <style>
+        body { font-family: serif; line-height: 1.6; margin: 2em; }
+        h1, h2, h3 { color: #333; }
+        p { margin-bottom: 1em; }
+        img { max-width: 100%; height: auto; }
+        .chapter-meta { color: #666; font-style: italic; margin-bottom: 2em; border-bottom: 1px solid #eee; padding-bottom: 1em; }
+    </style>
+</head>
+<body>
+    <h1>${escapeXml(article.title)}</h1>
+    <div class="chapter-meta">
+        <p>Source: ${escapeXml(article.siteName)}</p>
+        <p>URL: ${escapeXml(article.url)}</p>
+        ${article.wordCount ? `<p>Word count: ${article.wordCount} words</p>` : ''}
+    </div>
+    ${article.content}
+</body>
+</html>`);
+    });
+    
+    return await zip.generateAsync({type: 'nodebuffer'});
+}
+
+/**
+ * API status endpoint
+ */
+app.get('/api/v1/status', requireApiKey, (req, res) => {
+    res.json({
+        status: 'ok',
+        user: req.apiUser.username,
+        version: '2.0.0',
+        features: ['epub-generation', 'url-tracking'],
+        limits: {
+            maxUrlsPerRequest: 50,
+            timeout: 15000
+        }
+    });
 });
 
 // =============================================================================
@@ -651,14 +1322,21 @@ app.get('/api/karakeep/bookmarks', requireAuth, async (req, res) => {
 // SERVER STARTUP
 // =============================================================================
 
-app.listen(PORT, () => {
-    console.log('\n🚀 LinkPub Server Started Successfully!');
-    console.log(`📡 Server running on: http://localhost:${PORT}`);
-    console.log('👤 Check users.json for login credentials');
-    console.log('📚 Features: Authentication, EPUB Storage, Theme Management');
-    if (KARAKEEP_ENABLED) {
-        console.log('🔗 Karakeep integration: ENABLED');
-    }
-    console.log('\n✨ Ready to convert articles to EPUBs!');
-    console.log('Press Ctrl+C to stop the server\n');
-});
+async function startServer() {
+    // Initialize application
+    await initializeApp();
+    
+    app.listen(PORT, () => {
+        console.log('\n🚀 LinkPub Server Started Successfully!');
+        console.log(`📡 Server running on: http://localhost:${PORT}`);
+        console.log('👤 Check users.json for login credentials');
+        console.log('📚 Features: Authentication, EPUB Storage, Theme Management');
+        if (KARAKEEP_ENABLED) {
+            console.log('🔗 Karakeep integration: ENABLED');
+        }
+        console.log('\n✨ Ready to convert articles to EPUBs!');
+        console.log('Press Ctrl+C to stop the server\n');
+    });
+}
+
+startServer();

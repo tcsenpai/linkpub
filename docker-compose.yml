@@ -21,6 +21,9 @@ services:
     volumes:
       # Optional: Mount .env file if you prefer file-based config
       - ./.env:/app/.env:ro
+      # Persistent storage for EPUBs and user data (will be created if missing)
+      - ./data:/app/data
+    user: "1001:1001"
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/karakeep/status"]
       interval: 30s

@@ -1,143 +1,139 @@
-# 📚 LinkPub v2.0
+# LinkPub - Web Article to EPUB Converter
 
-Transform web articles into your personal EPUB library with authentication, themes, and management features. LinkPub is a modern web application that converts online articles into professionally formatted EPUB files with user accounts, persistent storage, and a clean bookworm-friendly interface.
+LinkPub is a comprehensive web application that converts web articles to EPUB format with user authentication, library management, and programmatic API access. It extracts readable content from web pages and packages them into EPUB files for easy reading on e-readers and mobile devices.
 
-![LinkPub v2.0](https://img.shields.io/badge/Version-2.0.0-brightgreen) ![License](https://img.shields.io/badge/License-MIT-blue) ![Node.js](https://img.shields.io/badge/Node.js-18+-green) ![Authenticated](https://img.shields.io/badge/Features-Authenticated-orange)
+## ✨ Features
 
-## ✨ What's New in v2.0
+### Core Functionality
+- **Single Article Conversion**: Extract and convert individual web articles to EPUB
+- **Collection Builder**: Create custom EPUB collections from multiple articles with drag & drop reordering
+- **Karakeep Integration**: Import bookmarks from Karakeep service and convert to EPUBs
+- **Bulk Processing**: Process multiple URLs at once with progress tracking
 
-### 🔐 **User Authentication**
-- Secure login system with session management
-- Individual user accounts and preferences
-- Protected EPUB libraries per user
-- Guest access disabled for enhanced security
+### User Management
+- **Authentication System**: Secure user login with session management
+- **Personal Libraries**: Save and manage EPUBs in user-specific libraries
+- **Theme Support**: Light, Dark, and Sepia themes
+- **User Preferences**: Customizable settings and preferences
 
-### 📚 **Personal EPUB Library**
-- Save EPUBs directly to your personal library
-- View, download, and delete saved EPUBs
-- Automatic metadata preservation
-- Collection descriptions with article lists
-- File size and creation date tracking
+### Advanced Features
+- **URL Tracking**: Optional tracking of converted URLs with toggle control
+- **Accurate Page Estimation**: Word count-based page estimation for EPUBs
+- **API Access**: RESTful API with API key authentication for programmatic access
+- **Docker Support**: Bulletproof containerized deployment with persistent storage
 
-### 🎨 **Theme System**
-- **Light Theme**: Clean, modern reading experience
-- **Dark Theme**: Eye-friendly dark interface
-- **Sepia Theme**: Warm, vintage book aesthetic
-- Per-user theme preferences saved automatically
-
-### 🖥️ **Redesigned Interface**
-- Clean "bookworm" aesthetic (goodbye cyberpunk!)
-- Typography-focused design with Crimson Text
-- Improved usability and accessibility
-- Responsive design for all devices
-- Semantic HTML markup
-
-## ✨ Core Features
-
-### 📖 **Single Article Conversion**
-- Extract readable content from any web article
-- Intelligent content cleaning using Mozilla's Readability
-- Generate professional EPUB files with proper metadata
-- Preview articles before download or saving
-- Save to personal library or download immediately
-
-### 📑 **Collection Mode**
-- Create multi-article EPUB collections
-- Drag & drop reordering of articles
-- Bulk URL processing with progress tracking
-- Custom collection titles and author metadata
-- Save collections to library with detailed descriptions
-- Professional table of contents generation
-
-### 🔖 **Karakeep Integration** *(Optional)*
-- Direct integration with your Karakeep bookmarks
-- Visual bookmark selection with rich metadata
-- Batch processing with real-time status indicators
-- Filter bookmarks by domain or search terms
-- Option to save Karakeep collections to library
-
-### 🎯 **Library Management**
-- Personal EPUB storage per user
-- Browse saved EPUBs with metadata
-- Download any saved EPUB anytime
-- Delete unwanted EPUBs
-- Collection descriptions showing included articles
+### EPUB Features
+- **Rich Metadata**: Customizable titles, authors, and descriptions
+- **Table of Contents**: Automatic TOC generation with navigation
+- **Cover Pages**: Optional cover page generation for collections
+- **URL Listing**: Comprehensive descriptions including source URLs
+- **Individual Export**: Export articles individually or as collections
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-- **Option 1**: Node.js 18+ and npm
-- **Option 2**: Docker and Docker Compose
 
-### Installation Methods
+- Node.js (v18 or higher)
+- npm or yarn (for development)
+- Docker & Docker Compose (for containerized deployment)
 
-#### 🐳 **Docker (Recommended)**
+### Development Setup
 
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd linkpub
-   ```
+1. **Clone the repository:**
+```bash
+git clone <repository-url>
+cd linkpub
+```
 
-2. **Configure environment (optional)**
-   ```bash
-   cp .env.example .env
-   # Edit .env with your Karakeep credentials if needed
-   ```
+2. **Install dependencies:**
+```bash
+npm install
+```
 
-3. **Start with Docker Compose**
-   ```bash
-   docker-compose up -d
-   ```
+3. **Configure environment (optional):**
+```bash
+cp .env.example .env
+# Edit .env with your settings
+```
 
-4. **Open your browser**
-   Navigate to `http://localhost:3000`
+4. **Start the development server:**
+```bash
+npm start
+```
 
-#### 📦 **Local Development**
+5. **Access the application:**
+   - Open `http://localhost:3000`
+   - Default login: `admin` / `changeme` (update in users.json)
 
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd linkpub
-   ```
+### Docker Deployment (Recommended)
 
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
+1. **Create data directory:**
+```bash
+mkdir -p data
+```
 
-3. **Start the application**
-   ```bash
-   npm start
-   ```
+2. **Configure environment:**
+```bash
+# Create .env file with your settings
+echo "SESSION_SECRET=your-secret-key-here" > .env
+echo "KARAKEEP_KEY=your-karakeep-api-key" >> .env
+echo "KARAKEEP_URL=https://try.karakeep.app/api/v1" >> .env
+```
 
-4. **Open your browser**
-   Navigate to `http://localhost:3000`
+3. **Fix permissions (if needed):**
+```bash
+# Create data directory and fix permissions
+./fix-permissions.sh
+```
 
-### First Login
+4. **Start with Docker Compose:**
+```bash
+docker-compose up -d
+```
 
-1. **Check `users.json`** for login credentials
-2. **Default setup**: Edit the users.json file to add your credentials
-3. **Login** using the authentication form
-4. **Select your theme** from the dropdown menu
-5. **Start converting articles** to your personal library!
+5. **Check status:**
+```bash
+docker-compose ps
+docker-compose logs linkpub
+```
 
-## 👤 User Management
+The application will automatically:
+- Create required directories (`data/epubs/`)
+- Initialize `users.json` from example or create default
+- Set up persistent storage for EPUBs and user data
 
-### Setting Up Users
+## 🔧 Configuration
 
-Edit the `users.json` file to add user accounts:
+### Environment Variables
 
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `PORT` | Server port | `3000` |
+| `NODE_ENV` | Environment mode | `development` |
+| `SESSION_SECRET` | Session encryption key | Auto-generated |
+| `KARAKEEP_KEY` | Karakeep API key | Not set |
+| `KARAKEEP_URL` | Karakeep API URL | Not set |
+
+### User Management
+
+**Default User Creation:**
+- If `users.json` doesn't exist, a default admin user is created
+- Default credentials: `admin` / `changeme`
+- Update credentials immediately after first login
+
+**User Configuration:**
+Edit `users.json` to add users:
 ```json
 {
   "users": [
     {
-      "id": "your_user_id",
-      "username": "your_username", 
-      "password": "your_password",
+      "id": "unique-id",
+      "username": "username",
+      "password": "password",
       "theme": "light",
       "preferences": {
-        "defaultAuthor": "Your Name",
+        "trackUrls": true,
+        "defaultAuthor": "LinkPub",
         "autoSave": true
       }
     }
@@ -145,283 +141,198 @@ Edit the `users.json` file to add user accounts:
 }
 ```
 
-### User Features
-- **Individual Libraries**: Each user has their own EPUB storage
-- **Theme Preferences**: Automatically saved and restored
-- **Session Management**: Secure 24-hour sessions
-- **Personal Settings**: Customizable preferences per user
+## 📚 API Usage
 
-## ⚙️ Configuration
-
-### Environment Variables
-
-Create a `.env` file for configuration:
-
-```env
-# Server Configuration
-PORT=3000
-NODE_ENV=production
-SESSION_SECRET=your-secret-key-here
-
-# Karakeep Integration (Optional)
-KARAKEEP_KEY=your_api_key_here
-KARAKEEP_URL=https://try.karakeep.app/api/v1
-```
-
-### Karakeep Integration (Optional)
-
-To enable Karakeep bookmark integration:
-
-1. **Get your API key** from [Karakeep](https://karakeep.app)
-2. **Add to `.env` file** with your credentials
-3. **Restart the server** - the Karakeep tab will automatically appear
-4. **Access bookmarks** after logging in
-
-## 📁 File Structure
-
-### Directory Layout
-```
-linkpub/
-├── index.html          # Main application interface
-├── style.css           # Clean bookworm theme styles
-├── script.js           # Frontend application logic
-├── server.js           # Backend API server with auth
-├── users.json          # User accounts and preferences
-├── package.json        # Dependencies and metadata
-├── epubs/              # User EPUB storage (auto-created)
-│   ├── user1/          # Individual user directories
-│   ├── user2/          # EPUB files + metadata
-│   └── ...
-├── Dockerfile          # Docker container config
-├── docker-compose.yml  # Docker orchestration
-├── .env.example        # Environment template
-└── README.md           # This file
-```
-
-### Data Storage
-- **User Data**: `users.json` (JSON file)
-- **EPUB Files**: `epubs/{user_id}/` directories
-- **Metadata**: Stored alongside EPUBs as JSON files
-- **Sessions**: In-memory (resets on server restart)
-
-## 🛠️ Tech Stack
-
-### Backend
-- **Node.js** with Express framework
-- **express-session** for authentication
-- **Mozilla Readability** for content extraction
-- **JSDOM** for HTML parsing
-- **File system** for EPUB storage
-- **dotenv** for environment configuration
-
-### Frontend
-- **Vanilla JavaScript** (no framework dependencies)
-- **Modern CSS** with custom properties for theming
-- **JSZip** for EPUB generation
-- **SortableJS** for drag & drop functionality
-- **Semantic HTML** for accessibility
-
-### Security Features
-- **Session-based authentication**
-- **Per-user data isolation**
-- **Input validation and sanitization**
-- **Secure file handling**
-- **XSS protection**
-
-## 🎨 Theme System
-
-### Available Themes
-
-**Light Theme (Default)**
-- Clean white background
-- Dark text on light surfaces
-- Professional appearance
-
-**Dark Theme**
-- Dark blue-gray backgrounds
-- Light text for reduced eye strain
-- Modern dark interface
-
-**Sepia Theme**
-- Warm, book-like colors
-- Vintage paper aesthetic
-- Perfect for reading enthusiasts
-
-### Theme Management
-- Themes are automatically saved per user
-- Instant switching via dropdown menu
-- CSS custom properties for consistent theming
-- Accessible color contrasts in all themes
-
-## 📖 API Documentation
-
-### Authentication Endpoints
-
-#### `POST /api/auth/login`
-User login
-```json
-{
-  "username": "your_username",
-  "password": "your_password"
-}
-```
-
-#### `POST /api/auth/logout`
-User logout (destroys session)
-
-#### `GET /api/auth/me`
-Get current user information
-
-### Article Endpoints
-
-#### `POST /api/extract`
-Extract article content (requires authentication)
-```json
-{
-  "url": "https://example.com/article"
-}
-```
-
-### EPUB Library Endpoints
-
-#### `GET /api/epubs`
-Get user's saved EPUBs (requires authentication)
-
-#### `POST /api/epubs/save`
-Save EPUB to library (requires authentication)
-```json
-{
-  "title": "Article Title",
-  "description": "Article description or collection list",
-  "contents": [{"title": "...", "url": "...", "siteName": "..."}],
-  "epubData": "data:application/epub+zip;base64,..."
-}
-```
-
-#### `GET /api/epubs/:filename`
-Download EPUB from library (requires authentication)
-
-#### `DELETE /api/epubs/:filename`
-Delete EPUB from library (requires authentication)
-
-### User Preferences
-
-#### `PUT /api/user/theme`
-Update user theme preference (requires authentication)
-```json
-{
-  "theme": "light|dark|sepia"
-}
-```
-
-### Karakeep Integration
-
-#### `GET /api/karakeep/status`
-Check if Karakeep integration is enabled
-
-#### `GET /api/karakeep/bookmarks`
-Fetch bookmarks from Karakeep (requires authentication)
-
-## 🔧 Development
-
-### Development Commands
+### Authentication
+Generate an API key in your user settings, then use it in requests:
 
 ```bash
-# Local development
-npm start               # Start the server
-npm run dev             # Start with development settings
+# Header authentication
+curl -H "X-API-Key: lp_your_api_key_here" ...
 
-# Docker development  
-docker-compose up --build    # Build and start containers
-docker-compose logs -f       # View logs
-docker-compose down          # Stop services
+# Query parameter authentication
+curl "https://your-instance.com/api/v1/status?apiKey=lp_your_api_key_here"
 ```
 
-### Adding New Features
+### Generate EPUB from URLs
 
-1. **Backend changes**: Modify `server.js`
-2. **Frontend logic**: Update `script.js`
-3. **Styling**: Edit `style.css`
-4. **UI elements**: Modify `index.html`
-5. **User data**: Update `users.json` structure if needed
+**Endpoint:** `POST /api/v1/generate-epub`
 
-### Code Organization
+**Request:**
+```json
+{
+  "urls": [
+    "https://example.com/article1",
+    "https://example.com/article2"
+  ],
+  "title": "My Custom Collection",
+  "author": "Custom Author",
+  "description": "Collection of interesting articles"
+}
+```
 
-**Frontend (script.js)**
-- Organized by feature sections
-- Comprehensive error handling
-- JSDoc documentation
-- Modular class-based structure
+**Response:** EPUB file download
 
-**Backend (server.js)**
-- RESTful API design
-- Authentication middleware
-- File-based user management
-- Comprehensive logging
+**Example with curl:**
+```bash
+curl -X POST \
+  -H "X-API-Key: lp_your_api_key_here" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "urls": ["https://example.com/article"],
+    "title": "Test Collection",
+    "author": "API User"
+  }' \
+  -o "collection.epub" \
+  "https://your-instance.com/api/v1/generate-epub"
+```
 
-**Styling (style.css)**
-- CSS custom properties for theming
-- Organized by component sections
-- Responsive design patterns
-- Semantic class naming
+**Limits:**
+- Maximum 50 URLs per request
+- 15-second timeout per URL extraction
+- API key required for all requests
 
-## 🐛 Troubleshooting
+### API Status
 
-### Authentication Issues
-- **Login Failed**: Check username/password in `users.json`
-- **Session Expired**: Sessions last 24 hours, login again
-- **Theme Not Saving**: Ensure user is properly authenticated
+**Endpoint:** `GET /api/v1/status`
 
-### EPUB Library Issues
-- **Can't Save EPUBs**: Check authentication and file permissions
-- **EPUBs Not Loading**: Verify `epubs/` directory exists and is writable
-- **Missing EPUBs**: Check user-specific subdirectory
+Returns API status, user info, and limits.
 
-### Article Extraction Issues
-- **Extraction Failed**: Some sites block automated access
-- **Invalid URL**: Ensure URL is valid HTTP/HTTPS
-- **Network Errors**: Check server logs for detailed errors
+## 🐳 Docker
 
-### Karakeep Integration
-- **Tab Not Appearing**: Check `.env` configuration
-- **API Errors**: Verify API key and URL are correct
-- **No Bookmarks**: Ensure bookmarks exist in Karakeep
+### Container Features
+- **Automatic Initialization**: Creates missing directories and files
+- **Persistent Storage**: Data survives container restarts
+- **Health Checks**: Built-in health monitoring
+- **Security**: Runs as non-root user
 
-### General Issues
-- **Server Won't Start**: Check port 3000 is available
-- **CORS Errors**: LinkPub includes its own backend
-- **Permission Errors**: Ensure write access to project directory
+### File Structure
+```
+linkpub/
+├── data/                    # Persistent data (Docker)
+│   ├── epubs/              # User EPUB libraries
+│   ├── users.json          # User accounts
+│   └── converted_urls.json # URL tracking
+├── docker-compose.yml      # Docker configuration
+├── Dockerfile             # Container definition
+├── users.json.example     # Default user template
+└── ...
+```
 
-## 🤝 Contributing
+### Docker Commands
+```bash
+# Start services
+docker-compose up -d
 
-Contributions are welcome! Please:
+# View logs
+docker-compose logs -f linkpub
 
-1. **Follow existing code style** and patterns
-2. **Test authentication flows** thoroughly
-3. **Verify all themes** work correctly
-4. **Test EPUB library** functionality
-5. **Update documentation** for new features
-6. **Ensure responsive design** compatibility
+# Restart service
+docker-compose restart linkpub
 
-### Development Guidelines
-- Use semantic HTML markup
-- Follow CSS custom property patterns
-- Implement proper error handling
-- Add comprehensive logging
-- Test with multiple user accounts
+# Update and rebuild
+docker-compose pull
+docker-compose up -d --build
+
+# Backup data
+tar -czf linkpub-backup.tar.gz data/
+```
+
+## 🔌 Integrations
+
+### Karakeep
+Connect your Karakeep account to import bookmarks:
+
+1. Get your API key from Karakeep
+2. Add to `.env`: `KARAKEEP_KEY=your_key` and `KARAKEEP_URL=https://try.karakeep.app/api/v1`
+3. Restart the application
+4. Use the Karakeep tab to import and convert bookmarks
+
+### n8n Workflow
+Use the API with n8n for automated EPUB generation:
+
+1. **HTTP Request Node**: Configure POST to `/api/v1/generate-epub`
+2. **Headers**: Add `X-API-Key` with your API key
+3. **Body**: JSON with URLs array and metadata
+4. **Output**: Save EPUB file or process further
+
+## 🛠️ Development
+
+### Project Structure
+```
+linkpub/
+├── server.js              # Main server application
+├── script.js              # Frontend JavaScript
+├── style.css              # Styling
+├── index.html             # Main HTML page
+├── package.json           # Dependencies
+└── README.md              # This file
+```
+
+### Key Technologies
+- **Backend**: Node.js, Express, JSDOM, Readability
+- **Frontend**: Vanilla JavaScript, HTML5, CSS3
+- **EPUB**: JSZip for EPUB generation
+- **Authentication**: Express sessions
+- **Storage**: JSON files (users, URLs, metadata)
+
+### API Endpoints
+- `POST /api/extract` - Extract single article
+- `GET /api/epubs` - List user's EPUBs
+- `POST /api/epubs/save` - Save EPUB to library
+- `GET /api/user/converted-urls` - Get URL history
+- `POST /api/user/api-key` - Generate API key
+- `POST /api/v1/generate-epub` - API EPUB generation
+- `GET /api/v1/status` - API status
+
+## 🔒 Security
+
+- **Session Management**: Secure session cookies
+- **API Keys**: Cryptographically secure API keys
+- **Input Validation**: URL and data validation
+- **Rate Limiting**: Built-in extraction timeouts
+- **Docker Security**: Non-root container execution
+- **Git Security**: Comprehensive .gitignore for sensitive files
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
+This project is licensed under the MIT License - see the LICENSE.md file for details.
 
-## 🙏 Acknowledgments
+## 🤝 Contributing
 
-- **Mozilla Readability** for excellent content extraction
-- **Karakeep** for bookmark management integration
-- **Express.js** community for authentication patterns
-- **EPUB specification** maintainers
-- **Open source community** for foundational libraries
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
----
+## 🐛 Troubleshooting
 
-**LinkPub v2.0** - Your authenticated personal library for web articles 📚🔐✨
+### Common Issues
+
+**Container won't start:**
+- Check Docker logs: `docker-compose logs linkpub`
+- Verify .env file format
+- Ensure data directory has correct permissions
+
+**Permission denied errors:**
+- Run the permission fix script: `./fix-permissions.sh`
+- Or manually fix: `sudo chown -R 1001:1001 ./data && chmod -R 755 ./data`
+- Restart container: `docker-compose down && docker-compose up -d`
+
+**API key not working:**
+- Verify key format starts with `lp_`
+- Check user preferences in users.json
+- Regenerate key in user settings
+
+**EPUB generation fails:**
+- Check URL accessibility
+- Verify content is extractable (not behind paywall)
+- Check server logs for specific errors
+
+**Karakeep integration not working:**
+- Verify KARAKEEP_KEY and KARAKEEP_URL in .env
+- Check Karakeep API status
+- Restart application after configuration changes
+
+For more help, please open an issue on GitHub.

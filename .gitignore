@@ -1,4 +1,50 @@
+# Environment and configuration
 .env
-node_modules
+.env.local
+.env.production
+
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# User data and generated content
 users.json
-epubs
+converted_urls.json
+epubs/
+data/
+
+# API keys and sensitive files
+*.key
+*.pem
+
+# Logs
+logs/
+*.log
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Temporary files
+tmp/
+temp/

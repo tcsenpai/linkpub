@@ -568,13 +568,15 @@ class LinkPub {
     </spine>
 </package>`);
         
+        const estimatedPages = Math.max(1, Math.ceil((article.wordCount || 1000) / 250));
+        
         oebps.file('toc.ncx', `<?xml version="1.0" encoding="UTF-8"?>
 <ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">
     <head>
         <meta name="dtb:uid" content="${this.generateUUID()}"/>
         <meta name="dtb:depth" content="1"/>
-        <meta name="dtb:totalPageCount" content="0"/>
-        <meta name="dtb:maxPageNumber" content="0"/>
+        <meta name="dtb:totalPageCount" content="${estimatedPages}"/>
+        <meta name="dtb:maxPageNumber" content="${estimatedPages}"/>
     </head>
     <docTitle>
         <text>${this.escapeHtml(article.title)}</text>
@@ -1023,10 +1025,12 @@ class LinkPub {
      */
     generateCollectionDescription(articles) {
         if (articles.length === 0) return 'Empty collection';
-        if (articles.length === 1) return articles[0].title;
+        if (articles.length === 1) return `${articles[0].title}\n\nSource: ${articles[0].url}`;
         
-        const titles = articles.map((article, index) => `${index + 1}. ${article.title}`);
-        return `This collection contains ${articles.length} articles:\n\n${titles.join('\n')}`;
+        const articlesWithUrls = articles.map((article, index) => 
+            `${index + 1}. ${article.title}\n   ${article.url}`
+        );
+        return `This collection contains ${articles.length} articles:\n\n${articlesWithUrls.join('\n\n')}`;
     }
     
     handleClearAll() {
@@ -1171,13 +1175,16 @@ class LinkPub {
             <content src="chapter${index + 1}.html"/>
         </navPoint>`).join('');
         
+        const totalWords = articles.reduce((sum, article) => sum + (article.wordCount || 1000), 0);
+        const estimatedPages = Math.max(1, Math.ceil(totalWords / 250));
+        
         oebps.file('toc.ncx', `<?xml version="1.0" encoding="UTF-8"?>
 <ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">
     <head>
         <meta name="dtb:uid" content="${this.generateUUID()}"/>
         <meta name="dtb:depth" content="1"/>
-        <meta name="dtb:totalPageCount" content="0"/>
-        <meta name="dtb:maxPageNumber" content="0"/>
+        <meta name="dtb:totalPageCount" content="${estimatedPages}"/>
+        <meta name="dtb:maxPageNumber" content="${estimatedPages}"/>
     </head>
     <docTitle>
         <text>${this.escapeHtml(title)}</text>
@@ -1451,13 +1458,16 @@ class LinkPub {
             </navPoint>`)
         ].join('');
         
+        const totalWords = articles.reduce((sum, article) => sum + (article.wordCount || 1000), 0);
+        const estimatedPages = Math.max(1, Math.ceil(totalWords / 250));
+        
         oebps.file('toc.ncx', `<?xml version="1.0" encoding="UTF-8"?>
 <ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">
     <head>
         <meta name="dtb:uid" content="${this.generateUUID()}"/>
         <meta name="dtb:depth" content="1"/>
-        <meta name="dtb:totalPageCount" content="0"/>
-        <meta name="dtb:maxPageNumber" content="0"/>
+        <meta name="dtb:totalPageCount" content="${estimatedPages}"/>
+        <meta name="dtb:maxPageNumber" content="${estimatedPages}"/>
     </head>
     <docTitle>
         <text>${this.escapeHtml(title)}</text>
@@ -1714,7 +1724,7 @@ class LinkPub {
         );
         
         const title = this.karakeepCollectionTitle.value.trim() || 
-            `Karakeep Collection (${selectedBookmarksList.length} articles)`;
+            `The Grep Gazette (${selectedBookmarksList.length} articles)`;
         const author = this.karakeepCollectionAuthor.value.trim() || 'Karakeep';
         
         // Reset all bookmark statuses

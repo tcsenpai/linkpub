@@ -17,8 +17,10 @@ COPY . .
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S linkpub -u 1001
 
-# Change ownership of the app directory
-RUN chown -R linkpub:nodejs /app
+# Create epubs directory with correct permissions
+RUN mkdir -p /app/epubs && \
+    chown -R linkpub:nodejs /app
+
 USER linkpub
 
 # Expose port
