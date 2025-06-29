@@ -276,6 +276,29 @@ class LinkPub {
         this.downloadSelectedBtn.addEventListener('click', () => this.handleDownloadSelected());
         this.bookmarkSearchInput.addEventListener('input', () => this.filterBookmarks());
         this.domainFilter.addEventListener('change', () => this.filterBookmarks());
+        
+        // Settings Events
+        this.settingsBtn = document.getElementById('settingsBtn');
+        this.settingsOverlay = document.getElementById('settingsOverlay');
+        this.closeSettingsBtn = document.getElementById('closeSettingsBtn');
+        this.trackUrlsToggle = document.getElementById('trackUrlsToggle');
+        this.viewUrlHistoryBtn = document.getElementById('viewUrlHistoryBtn');
+        this.clearUrlHistoryBtn = document.getElementById('clearUrlHistoryBtn');
+        this.urlHistoryOverlay = document.getElementById('urlHistoryOverlay');
+        this.closeUrlHistoryBtn = document.getElementById('closeUrlHistoryBtn');
+        
+        this.settingsBtn.addEventListener('click', () => this.showSettings());
+        this.closeSettingsBtn.addEventListener('click', () => this.hideSettings());
+        this.settingsOverlay.addEventListener('click', (e) => {
+            if (e.target === this.settingsOverlay) this.hideSettings();
+        });
+        this.trackUrlsToggle.addEventListener('change', () => this.updateTrackUrlsPreference());
+        this.viewUrlHistoryBtn.addEventListener('click', () => this.showUrlHistory());
+        this.clearUrlHistoryBtn.addEventListener('click', () => this.clearUrlHistory());
+        this.closeUrlHistoryBtn.addEventListener('click', () => this.hideUrlHistory());
+        this.urlHistoryOverlay.addEventListener('click', (e) => {
+            if (e.target === this.urlHistoryOverlay) this.hideUrlHistory();
+        });
     }
     
     /**
@@ -1630,12 +1653,17 @@ class LinkPub {
                     </div>
                     ${tags}
                 </div>
+                <div class="bookmark-actions">
+                    <button class="bookmark-toggle-btn" onclick="linkPub.toggleBookmarkStatus('${bookmark.id}')" title="Toggle status">
+                        📝
+                    </button>
+                </div>
             </div>
         `;
         
         // Add click event listeners
         card.addEventListener('click', (e) => {
-            if (e.target.type !== 'checkbox') {
+            if (e.target.type !== 'checkbox' && !e.target.classList.contains('bookmark-toggle-btn')) {
                 this.toggleBookmarkSelection(bookmark.id);
             }
         });
@@ -1898,6 +1926,329 @@ class LinkPub {
             const bookmarkId = card.dataset.id;
             this.updateBookmarkStatus(bookmarkId, 'none');
         });
+    }
+    
+    /**
+     * Toggle bookmark status manually
+     */
+    toggleBookmarkStatus(bookmarkId) {
+        const card = this.bookmarksGrid.querySelector(`[data-id="${bookmarkId}"]`);
+        if (!card) return;
+        
+        // Get current status
+        const statusEl = card.querySelector('.bookmark-status');
+        const currentClasses = Array.from(statusEl.classList);
+        let currentStatus = 'none';
+        
+        if (currentClasses.includes('processing')) currentStatus = 'processing';
+        else if (currentClasses.includes('success')) currentStatus = 'success';
+        else if (currentClasses.includes('error')) currentStatus = 'error';
+        
+        // Cycle through statuses: none -> processing -> success -> error -> none
+        let nextStatus;
+        switch (currentStatus) {
+            case 'none':
+                nextStatus = 'processing';
+                break;
+            case 'processing':
+                nextStatus = 'success';
+                break;
+            case 'success':
+                nextStatus = 'error';
+                break;
+            case 'error':
+                nextStatus = 'none';
+                break;
+            default:
+                nextStatus = 'processing';
+        }
+        
+        this.updateBookmarkStatus(bookmarkId, nextStatus);
+        
+        // Update button text to show current status
+        const button = card.querySelector('.bookmark-toggle-btn');
+        const statusIcons = {
+            'none': '📝',
+            'processing': '⏳',
+            'success': '✅',
+            'error': '❌'
+        };
+        button.textContent = statusIcons[nextStatus];
+        button.title = `Status: ${nextStatus} (click to cycle)`;
+    }
+    
+    // =================================================================
+    // SETTINGS MANAGEMENT METHODS
+    // =================================================================
+    
+    /**
+     * Show settings modal
+     */
+    async showSettings() {
+        this.settingsOverlay.style.display = 'flex';
+        await this.loadApiKeyStatus();
+        this.loadUserPreferences();
+    }
+    
+    /**
+     * Hide settings modal
+     */
+    hideSettings() {
+        this.settingsOverlay.style.display = 'none';
+    }
+    
+    /**
+     * Load API key status
+     */
+    async loadApiKeyStatus() {
+        const container = document.getElementById('apiKeyContainer');
+        const loading = document.getElementById('apiKeyLoading');
+        
+        loading.style.display = 'block';
+        
+        try {
+            const response = await fetch('/api/user/api-key', {
+                credentials: 'include'
+            });
+            
+            const data = await response.json();
+            
+            if (data.hasApiKey) {
+                container.innerHTML = `
+                    <div class="api-key-display">
+                        <div class="api-key-info">
+                            <strong>API Key:</strong> <code class="api-key-masked">${data.apiKey}</code>
+                            <div class="api-key-full" style="display: none;">
+                                <strong>Full Key:</strong> <code class="api-key-code">${data.fullKey}</code>
+                            </div>
+                        </div>
+                        <div class="api-key-actions">
+                            <button class="settings-btn secondary" onclick="linkPub.toggleApiKeyVisibility()">👁️ Show Full Key</button>
+                            <button class="settings-btn secondary" onclick="linkPub.copyApiKey('${data.fullKey}')">📋 Copy</button>
+                            <button class="settings-btn danger" onclick="linkPub.regenerateApiKey()">🔄 Regenerate</button>
+                        </div>
+                    </div>
+                `;
+            } else {
+                container.innerHTML = `
+                    <div class="api-key-generate">
+                        <p>No API key generated yet.</p>
+                        <button class="settings-btn primary" onclick="linkPub.generateApiKey()">🔑 Generate API Key</button>
+                    </div>
+                `;
+            }
+        } catch (error) {
+            console.error('Failed to load API key status:', error);
+            container.innerHTML = `
+                <div class="api-key-error">
+                    <p>Failed to load API key status</p>
+                    <button class="settings-btn secondary" onclick="linkPub.loadApiKeyStatus()">🔄 Retry</button>
+                </div>
+            `;
+        }
+    }
+    
+    /**
+     * Generate new API key
+     */
+    async generateApiKey() {
+        try {
+            const response = await fetch('/api/user/api-key', {
+                method: 'POST',
+                credentials: 'include'
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                alert('API key generated successfully!');
+                await this.loadApiKeyStatus();
+            } else {
+                throw new Error(data.error || 'Failed to generate API key');
+            }
+        } catch (error) {
+            console.error('Generate API key error:', error);
+            alert(`Failed to generate API key: ${error.message}`);
+        }
+    }
+    
+    /**
+     * Regenerate API key
+     */
+    async regenerateApiKey() {
+        if (!confirm('Are you sure you want to regenerate your API key? The old key will stop working.')) {
+            return;
+        }
+        
+        await this.generateApiKey();
+    }
+    
+    /**
+     * Toggle API key visibility
+     */
+    toggleApiKeyVisibility() {
+        const fullKeyDiv = document.querySelector('.api-key-full');
+        const button = event.target;
+        
+        if (fullKeyDiv.style.display === 'none') {
+            fullKeyDiv.style.display = 'block';
+            button.textContent = '🙈 Hide Full Key';
+        } else {
+            fullKeyDiv.style.display = 'none';
+            button.textContent = '👁️ Show Full Key';
+        }
+    }
+    
+    /**
+     * Copy API key to clipboard
+     */
+    async copyApiKey(apiKey) {
+        try {
+            await navigator.clipboard.writeText(apiKey);
+            const button = event.target;
+            const originalText = button.textContent;
+            button.textContent = '✅ Copied!';
+            setTimeout(() => {
+                button.textContent = originalText;
+            }, 2000);
+        } catch (error) {
+            console.error('Failed to copy API key:', error);
+            alert('Failed to copy API key to clipboard');
+        }
+    }
+    
+    /**
+     * Load user preferences
+     */
+    loadUserPreferences() {
+        const trackUrls = this.currentUser.preferences?.trackUrls !== false;
+        this.trackUrlsToggle.checked = trackUrls;
+    }
+    
+    /**
+     * Update track URLs preference
+     */
+    async updateTrackUrlsPreference() {
+        try {
+            const trackUrls = this.trackUrlsToggle.checked;
+            
+            const response = await fetch('/api/user/preferences', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                credentials: 'include',
+                body: JSON.stringify({
+                    preferences: { trackUrls }
+                })
+            });
+            
+            if (response.ok) {
+                this.currentUser.preferences = this.currentUser.preferences || {};
+                this.currentUser.preferences.trackUrls = trackUrls;
+                console.log('URL tracking preference updated:', trackUrls);
+            } else {
+                throw new Error('Failed to update preference');
+            }
+        } catch (error) {
+            console.error('Update preference error:', error);
+            // Revert the toggle
+            this.trackUrlsToggle.checked = !this.trackUrlsToggle.checked;
+            alert('Failed to update URL tracking preference');
+        }
+    }
+    
+    /**
+     * Show URL history modal
+     */
+    async showUrlHistory() {
+        this.urlHistoryOverlay.style.display = 'flex';
+        await this.loadUrlHistory();
+    }
+    
+    /**
+     * Hide URL history modal
+     */
+    hideUrlHistory() {
+        this.urlHistoryOverlay.style.display = 'none';
+    }
+    
+    /**
+     * Load URL history
+     */
+    async loadUrlHistory() {
+        const content = document.getElementById('urlHistoryContent');
+        
+        content.innerHTML = '<div class="loading-placeholder">Loading...</div>';
+        
+        try {
+            const response = await fetch('/api/user/converted-urls', {
+                credentials: 'include'
+            });
+            
+            const data = await response.json();
+            
+            if (data.urls && data.urls.length > 0) {
+                content.innerHTML = `
+                    <div class="url-history-list">
+                        ${data.urls.map(url => `
+                            <div class="url-history-item">
+                                <div class="url-info">
+                                    <div class="url-title">${this.escapeHtml(url.title)}</div>
+                                    <div class="url-link">${this.escapeHtml(url.url)}</div>
+                                    <div class="url-meta">
+                                        <span class="url-method">${url.method}</span>
+                                        <span class="url-date">${new Date(url.convertedAt).toLocaleDateString()}</span>
+                                        <span class="url-site">${this.escapeHtml(url.siteName)}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            } else {
+                content.innerHTML = `
+                    <div class="url-history-empty">
+                        <p>No URL conversion history found.</p>
+                        <p>Start converting articles to see them here!</p>
+                    </div>
+                `;
+            }
+        } catch (error) {
+            console.error('Failed to load URL history:', error);
+            content.innerHTML = `
+                <div class="url-history-error">
+                    <p>Failed to load URL history</p>
+                    <button class="settings-btn secondary" onclick="linkPub.loadUrlHistory()">🔄 Retry</button>
+                </div>
+            `;
+        }
+    }
+    
+    /**
+     * Clear URL history
+     */
+    async clearUrlHistory() {
+        if (!confirm('Are you sure you want to clear your URL conversion history? This cannot be undone.')) {
+            return;
+        }
+        
+        try {
+            const response = await fetch('/api/user/converted-urls', {
+                method: 'DELETE',
+                credentials: 'include'
+            });
+            
+            if (response.ok) {
+                alert('URL history cleared successfully!');
+                await this.loadUrlHistory();
+            } else {
+                throw new Error('Failed to clear URL history');
+            }
+        } catch (error) {
+            console.error('Clear URL history error:', error);
+            alert(`Failed to clear URL history: ${error.message}`);
+        }
     }
 }
 

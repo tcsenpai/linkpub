@@ -52,6 +52,7 @@
                 <option value="dark">🌙 Dark</option>
                 <option value="sepia">📖 Sepia</option>
             </select>
+            <button class="settings-btn" id="settingsBtn">⚙️ Settings</button>
             <button class="logout-btn" id="logoutBtn">Logout</button>
         </div>
 
@@ -234,6 +235,58 @@
                 </div>
             </div>
         </footer>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="settings-overlay" id="settingsOverlay" style="display: none;">
+        <div class="settings-modal">
+            <div class="settings-header">
+                <h2>⚙️ User Settings</h2>
+                <button class="close-btn" id="closeSettingsBtn">×</button>
+            </div>
+            <div class="settings-content">
+                
+                <!-- API Key Section -->
+                <div class="settings-section">
+                    <h3>🔑 API Key</h3>
+                    <p class="settings-description">Generate an API key for programmatic access to LinkPub</p>
+                    <div class="api-key-container" id="apiKeyContainer">
+                        <div class="loading-placeholder" id="apiKeyLoading">Loading...</div>
+                    </div>
+                </div>
+
+                <!-- URL Tracking Section -->
+                <div class="settings-section">
+                    <h3>📝 URL Tracking</h3>
+                    <p class="settings-description">Track converted URLs for your reference</p>
+                    <div class="setting-item">
+                        <label class="toggle-label">
+                            <input type="checkbox" id="trackUrlsToggle" class="toggle-input">
+                            <span class="toggle-slider"></span>
+                            <span class="toggle-text">Enable URL tracking</span>
+                        </label>
+                    </div>
+                    <div class="setting-item">
+                        <button class="settings-btn secondary" id="viewUrlHistoryBtn">📋 View URL History</button>
+                        <button class="settings-btn danger" id="clearUrlHistoryBtn">🗑️ Clear History</button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- URL History Modal -->
+    <div class="url-history-overlay" id="urlHistoryOverlay" style="display: none;">
+        <div class="url-history-modal">
+            <div class="url-history-header">
+                <h2>📋 URL Conversion History</h2>
+                <button class="close-btn" id="closeUrlHistoryBtn">×</button>
+            </div>
+            <div class="url-history-content" id="urlHistoryContent">
+                <div class="loading-placeholder">Loading...</div>
+            </div>
+        </div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
