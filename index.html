@@ -1,31 +1,78 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Convert web articles to EPUB format with user authentication, library management, and theme support.">
+    <meta name="author" content="LinkPub Team">
+    <meta name="keywords" content="epub, articles, converter, books, reading, library">
+    
     <title>LinkPub - Convert Web Articles to EPUB</title>
+    
+    <!-- Styles -->
     <link rel="stylesheet" href="style.css">
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="container">
+    <!-- Authentication Overlay -->
+    <div class="auth-overlay" id="authOverlay" style="display: none;">
+        <div class="auth-modal">
+            <div class="auth-header">
+                <h2>📚 Welcome to LinkPub</h2>
+                <p>Please sign in to continue</p>
+            </div>
+            <form class="auth-form" id="authForm">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" class="form-input" required>
+                </div>
+                <button type="submit" class="auth-button">Sign In</button>
+                <div class="auth-error" id="authError"></div>
+            </form>
+        </div>
+    </div>
+
+    <div class="container" id="mainContainer" style="display: none;">
+        <!-- User Menu -->
+        <div class="user-menu">
+            <div class="user-info">
+                <span>👤</span>
+                <span id="currentUser">User</span>
+            </div>
+            <select class="theme-selector" id="themeSelector">
+                <option value="light">☀️ Light</option>
+                <option value="dark">🌙 Dark</option>
+                <option value="sepia">📖 Sepia</option>
+            </select>
+            <button class="logout-btn" id="logoutBtn">Logout</button>
+        </div>
+
         <header>
             <div class="logo-container">
                 <h1>📚 LinkPub</h1>
-                <span class="version">v1.0</span>
+                <span class="version">v2.0</span>
             </div>
             <p>Transform the web into your personal library</p>
         </header>
 
         <main>
             <!-- Tab Navigation -->
-            <div class="tab-nav">
-                <button class="tab-btn active" data-tab="single">Single Article</button>
-                <button class="tab-btn" data-tab="collection">Collection</button>
-                <button class="tab-btn" data-tab="karakeep" id="karakeepTab" style="display: none;">Karakeep</button>
-            </div>
+            <nav class="tab-nav" role="tablist" aria-label="Content type selection">
+                <button class="tab-btn active" data-tab="single" role="tab" aria-selected="true" aria-controls="singleTab">Single Article</button>
+                <button class="tab-btn" data-tab="collection" role="tab" aria-selected="false" aria-controls="collectionTab">Collection</button>
+                <button class="tab-btn" data-tab="karakeep" id="karakeepTab" role="tab" aria-selected="false" aria-controls="karakeepTab" style="display: none;">Karakeep</button>
+            </nav>
 
             <!-- Single Article Tab -->
-            <div class="tab-content active" id="singleTab">
+            <section class="tab-content active" id="singleTab" role="tabpanel" aria-labelledby="single-tab">
                 <div class="input-section">
                     <div class="input-group">
                         <input type="url" id="urlInput" placeholder="Enter article URL..." required>
@@ -42,12 +89,28 @@
                 <div class="preview-section" id="previewSection" style="display: none;">
                     <h3>Preview</h3>
                     <div class="article-preview" id="articlePreview"></div>
-                    <button id="downloadBtn" class="download-btn">Download EPUB</button>
+                    <div class="input-group">
+                        <button id="downloadBtn" class="download-btn">Download EPUB</button>
+                        <button id="saveEpubBtn" class="primary-btn">Save to Library</button>
+                    </div>
                 </div>
-            </div>
+
+                <!-- Saved EPUBs Section -->
+                <div class="saved-epubs-section">
+                    <div class="saved-epubs-header">
+                        <h3>📚 Your Library</h3>
+                        <button class="refresh-epubs-btn" id="refreshEpubsBtn">Refresh</button>
+                    </div>
+                    <div class="epubs-grid" id="epubsGrid">
+                        <div class="no-epubs-message" id="noEpubsMessage">
+                            No saved EPUBs yet. Start by converting some articles!
+                        </div>
+                    </div>
+                </div>
+            </section>
 
             <!-- Collection Tab -->
-            <div class="tab-content" id="collectionTab">
+            <section class="tab-content" id="collectionTab" role="tabpanel" aria-labelledby="collection-tab">
                 <div class="collection-header">
                     <div class="collection-meta">
                         <input type="text" id="collectionTitle" placeholder="Collection Title" class="collection-title-input">
@@ -90,6 +153,7 @@
                             <button id="clearAllBtn" class="danger-btn">Clear All</button>
                             <div class="download-options">
                                 <button id="downloadCollectionBtn" class="download-btn" disabled>Download Collection EPUB</button>
+                                <button id="saveCollectionBtn" class="primary-btn" disabled>Save to Library</button>
                                 <div class="dropdown">
                                     <button id="exportOptionsBtn" class="secondary-btn dropdown-btn" disabled>
                                         Export Options ▼
@@ -104,10 +168,10 @@
                     </div>
                     <div class="articles-container" id="articlesContainer"></div>
                 </div>
-            </div>
+            </section>
 
             <!-- Karakeep Tab -->
-            <div class="tab-content" id="karakeepTab">
+            <section class="tab-content" id="karakeepTab" role="tabpanel" aria-labelledby="karakeep-tab">
                 <div class="karakeep-header">
                     <h3>Your Karakeep Bookmarks</h3>
                     <p>Select bookmarks to convert to EPUB format</p>
@@ -155,7 +219,7 @@
                 </div>
 
                 <div class="bookmarks-grid" id="bookmarksGrid"></div>
-            </div>
+            </section>
         </main>
         
         <footer>
