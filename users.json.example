@@ -1,0 +1,14 @@
+{
+  "users": [
+    {
+      "id": "admin",
+      "username": "yourname",
+      "password": "incredipass",
+      "theme": "dark",
+      "preferences": {
+        "defaultAuthor": "LinkPub",
+        "autoSave": true
+      }
+    }
+  ]
+}
