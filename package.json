@@ -1,7 +1,7 @@
 {
   "name": "linkpub",
-  "version": "1.0.0",
-  "description": "Convert web articles to EPUB format",
+  "version": "2.0.0",
+  "description": "Convert web articles to EPUB format with user authentication and library management",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -12,9 +12,10 @@
     "cors": "^2.8.5",
     "jsdom": "^22.1.0",
     "@mozilla/readability": "^0.4.4",
-    "dotenv": "^16.3.1"
+    "dotenv": "^16.3.1",
+    "express-session": "^1.17.3"
   },
-  "keywords": ["epub", "readability", "articles"],
-  "author": "LinkPub",
+  "keywords": ["epub", "readability", "articles", "books", "library", "authentication"],
+  "author": "LinkPub Team",
   "license": "MIT"
 }
