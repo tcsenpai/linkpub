@@ -17,9 +17,10 @@ COPY . .
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S linkpub -u 1001
 
-# Create epubs directory with correct permissions
-RUN mkdir -p /app/epubs && \
-    chown -R linkpub:nodejs /app
+# Create data directories with correct permissions
+RUN mkdir -p /app/data/epubs && \
+    chown -R linkpub:nodejs /app && \
+    chmod -R 755 /app/data
 
 USER linkpub
 

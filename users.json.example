@@ -2,12 +2,14 @@
   "users": [
     {
       "id": "admin",
-      "username": "yourname",
-      "password": "incredipass",
-      "theme": "dark",
+      "username": "your_username_here",
+      "password": "$2b$12$hashed_password_will_be_generated_automatically",
+      "theme": "light",
       "preferences": {
+        "trackUrls": true,
         "defaultAuthor": "LinkPub",
-        "autoSave": true
+        "autoSave": true,
+        "apiKey": "generated_when_needed"
       }
     }
   ]

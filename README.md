@@ -61,9 +61,11 @@ cp .env.example .env
 npm start
 ```
 
-5. **Access the application:**
-   - Open `http://localhost:3000`
-   - Default login: `admin` / `changeme` (update in users.json)
+5. **First-time setup:**
+   - Access the application at `http://localhost:3000`
+   - You'll be automatically redirected to the setup page if no users exist
+   - Create your admin account through the web interface
+   - No console interaction required!
 
 ### Docker Deployment (Recommended)
 
@@ -88,10 +90,19 @@ echo "KARAKEEP_URL=https://try.karakeep.app/api/v1" >> .env
 
 4. **Start with Docker Compose:**
 ```bash
-docker-compose up -d
+# Use the management scripts for easy deployment
+./run.sh
+# OR manually:
+# docker-compose up -d
 ```
 
-5. **Check status:**
+5. **First-time setup:**
+   - Access the application at `http://localhost:3000`
+   - You'll be automatically redirected to the setup page
+   - Create your admin account through the web interface
+   - No console interaction required!
+
+6. **Check status:**
 ```bash
 docker-compose ps
 docker-compose logs linkpub
@@ -99,7 +110,7 @@ docker-compose logs linkpub
 
 The application will automatically:
 - Create required directories (`data/epubs/`)
-- Initialize `users.json` from example or create default
+- Prompt for secure admin user creation on first run
 - Set up persistent storage for EPUBs and user data
 
 ## 🔧 Configuration
@@ -116,30 +127,44 @@ The application will automatically:
 
 ### User Management
 
-**Default User Creation:**
-- If `users.json` doesn't exist, a default admin user is created
-- Default credentials: `admin` / `changeme`
-- Update credentials immediately after first login
+**First-Time Setup:**
+- On first visit, LinkPub presents a web-based setup page
+- Interactive web interface for secure admin user creation
+- Real-time password strength validation
+- Passwords are automatically hashed using bcrypt (12 rounds)
+- No default credentials - secure setup process
 
-**User Configuration:**
-Edit `users.json` to add users:
+**Password Requirements:**
+- Minimum 8 characters
+- Must contain uppercase letter, lowercase letter, and number
+- All passwords are securely hashed before storage
+
+**Adding More Users:**
+Edit `users.json` to add additional users:
 ```json
 {
   "users": [
     {
       "id": "unique-id",
       "username": "username",
-      "password": "password",
+      "password": "$2b$12$hashed_password_generated_by_bcrypt",
       "theme": "light",
       "preferences": {
         "trackUrls": true,
         "defaultAuthor": "LinkPub",
-        "autoSave": true
+        "autoSave": true,
+        "apiKey": "lp_generated_when_needed"
       }
     }
   ]
 }
 ```
+
+**Security Features:**
+- All passwords are bcrypt-hashed with salt rounds
+- API keys are cryptographically secure
+- Session-based authentication
+- Password change functionality in user settings
 
 ## 📚 API Usage
 
@@ -219,7 +244,21 @@ linkpub/
 └── ...
 ```
 
-### Docker Commands
+### Docker Management Scripts
+
+**Easy Management:**
+```bash
+# Start LinkPub with fresh build
+./run.sh
+
+# Restart with fresh build (stops, removes, rebuilds)
+./restart.sh
+
+# Stop and remove containers
+./stop.sh
+```
+
+**Manual Docker Commands:**
 ```bash
 # Start services
 docker-compose up -d
@@ -287,11 +326,14 @@ linkpub/
 
 ## 🔒 Security
 
+- **Password Security**: bcrypt hashing with 12 salt rounds
 - **Session Management**: Secure session cookies
-- **API Keys**: Cryptographically secure API keys
-- **Input Validation**: URL and data validation
+- **API Keys**: Cryptographically secure API keys with `lp_` prefix
+- **Input Validation**: Comprehensive URL and data validation
 - **Rate Limiting**: Built-in extraction timeouts
 - **Docker Security**: Non-root container execution
+- **Interactive Setup**: No default credentials, secure first-time setup
+- **Password Complexity**: Enforced uppercase, lowercase, number requirements
 - **Git Security**: Comprehensive .gitignore for sensitive files
 
 ## 📄 License

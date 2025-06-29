@@ -52,6 +52,7 @@
                 <option value="dark">🌙 Dark</option>
                 <option value="sepia">📖 Sepia</option>
             </select>
+            <button class="settings-btn" id="libraryBtn">📚 Library</button>
             <button class="settings-btn" id="settingsBtn">⚙️ Settings</button>
             <button class="logout-btn" id="logoutBtn">Logout</button>
         </div>
@@ -96,18 +97,6 @@
                     </div>
                 </div>
 
-                <!-- Saved EPUBs Section -->
-                <div class="saved-epubs-section">
-                    <div class="saved-epubs-header">
-                        <h3>📚 Your Library</h3>
-                        <button class="refresh-epubs-btn" id="refreshEpubsBtn">Refresh</button>
-                    </div>
-                    <div class="epubs-grid" id="epubsGrid">
-                        <div class="no-epubs-message" id="noEpubsMessage">
-                            No saved EPUBs yet. Start by converting some articles!
-                        </div>
-                    </div>
-                </div>
             </section>
 
             <!-- Collection Tab -->
@@ -246,6 +235,28 @@
             </div>
             <div class="settings-content">
                 
+                <!-- Password Section -->
+                <div class="settings-section">
+                    <h3>🔒 Change Password</h3>
+                    <p class="settings-description">Update your account password</p>
+                    <div class="password-form">
+                        <div class="form-group">
+                            <label for="currentPassword">Current Password</label>
+                            <input type="password" id="currentPassword" class="form-input" placeholder="Enter current password">
+                        </div>
+                        <div class="form-group">
+                            <label for="newPassword">New Password</label>
+                            <input type="password" id="newPassword" class="form-input" placeholder="Enter new password">
+                        </div>
+                        <div class="form-group">
+                            <label for="confirmPassword">Confirm New Password</label>
+                            <input type="password" id="confirmPassword" class="form-input" placeholder="Confirm new password">
+                        </div>
+                        <button class="settings-btn primary" id="changePasswordBtn">Change Password</button>
+                        <div class="password-message" id="passwordMessage"></div>
+                    </div>
+                </div>
+
                 <!-- API Key Section -->
                 <div class="settings-section">
                     <h3>🔑 API Key</h3>
@@ -285,6 +296,24 @@
             </div>
             <div class="url-history-content" id="urlHistoryContent">
                 <div class="loading-placeholder">Loading...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Library Modal -->
+    <div class="library-overlay" id="libraryOverlay" style="display: none;">
+        <div class="library-modal">
+            <div class="library-header">
+                <h2>📚 Your Library</h2>
+                <button class="refresh-epubs-btn" id="refreshEpubsBtn">🔄 Refresh</button>
+                <button class="close-btn" id="closeLibraryBtn">×</button>
+            </div>
+            <div class="library-content">
+                <div class="epubs-grid" id="epubsGrid">
+                    <div class="no-epubs-message" id="noEpubsMessage">
+                        No saved EPUBs yet. Start by converting some articles!
+                    </div>
+                </div>
             </div>
         </div>
     </div>

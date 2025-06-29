@@ -131,6 +131,8 @@ class LinkPub {
      */
     async initApp() {
         try {
+            // Validate required DOM elements exist
+            this.validateDOMElements();
             await this.checkAuthStatus();
             this.initEventListeners();
             this.initDragAndDrop();
@@ -138,6 +140,22 @@ class LinkPub {
         } catch (error) {
             console.error('❌ Failed to initialize app:', error);
             this.showAuthOverlay();
+        }
+    }
+    
+    /**
+     * Validate that required DOM elements exist
+     */
+    validateDOMElements() {
+        const requiredElements = [
+            'authOverlay', 'authForm', 'mainContainer', 'urlInput', 
+            'convertBtn', 'errorMessage', 'loading', 'previewSection'
+        ];
+        
+        for (const elementName of requiredElements) {
+            if (!this[elementName]) {
+                throw new Error(`Required DOM element for ${elementName} not found`);
+            }
         }
     }
     
@@ -286,6 +304,11 @@ class LinkPub {
         this.clearUrlHistoryBtn = document.getElementById('clearUrlHistoryBtn');
         this.urlHistoryOverlay = document.getElementById('urlHistoryOverlay');
         this.closeUrlHistoryBtn = document.getElementById('closeUrlHistoryBtn');
+        this.changePasswordBtn = document.getElementById('changePasswordBtn');
+        this.passwordMessage = document.getElementById('passwordMessage');
+        this.libraryBtn = document.getElementById('libraryBtn');
+        this.libraryOverlay = document.getElementById('libraryOverlay');
+        this.closeLibraryBtn = document.getElementById('closeLibraryBtn');
         
         this.settingsBtn.addEventListener('click', () => this.showSettings());
         this.closeSettingsBtn.addEventListener('click', () => this.hideSettings());
@@ -298,6 +321,12 @@ class LinkPub {
         this.closeUrlHistoryBtn.addEventListener('click', () => this.hideUrlHistory());
         this.urlHistoryOverlay.addEventListener('click', (e) => {
             if (e.target === this.urlHistoryOverlay) this.hideUrlHistory();
+        });
+        this.changePasswordBtn.addEventListener('click', () => this.handleChangePassword());
+        this.libraryBtn.addEventListener('click', () => this.showLibrary());
+        this.closeLibraryBtn.addEventListener('click', () => this.hideLibrary());
+        this.libraryOverlay.addEventListener('click', (e) => {
+            if (e.target === this.libraryOverlay) this.hideLibrary();
         });
     }
     
@@ -465,6 +494,16 @@ class LinkPub {
             }
             
             const article = await response.json();
+            
+            // Validate article structure
+            if (!article || typeof article !== 'object') {
+                throw new Error('Invalid article data received');
+            }
+            
+            if (!article.title || !article.content) {
+                throw new Error('Article missing required fields (title or content)');
+            }
+            
             return article;
             
         } catch (error) {
@@ -473,9 +512,13 @@ class LinkPub {
     }
     
     showPreview(article) {
+        const readingTime = this.calculateReadingTime(article.wordCount);
+        const wordCountText = article.wordCount ? `${article.wordCount} words` : 'Word count unavailable';
+        
         this.articlePreview.innerHTML = `
             <h1>${this.escapeHtml(article.title)}</h1>
             <p><strong>Source:</strong> ${this.escapeHtml(article.siteName)}</p>
+            <p><strong>Reading time:</strong> ${readingTime} (${wordCountText})</p>
             ${article.excerpt ? `<p><em>${this.escapeHtml(article.excerpt)}</em></p>` : ''}
             <div>${article.content}</div>
         `;
@@ -646,15 +689,29 @@ class LinkPub {
      * @param {string} filename - Desired filename
      */
     downloadFile(blob, filename) {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        a.style.display = 'none';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        let url = null;
+        let a = null;
+        
+        try {
+            url = URL.createObjectURL(blob);
+            a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.style.display = 'none';
+            document.body.appendChild(a);
+            a.click();
+        } catch (error) {
+            console.error('Download failed:', error);
+            throw new Error(`Failed to download file: ${error.message}`);
+        } finally {
+            // Cleanup
+            if (a && a.parentNode) {
+                document.body.removeChild(a);
+            }
+            if (url) {
+                URL.revokeObjectURL(url);
+            }
+        }
     }
     
     /**
@@ -815,7 +872,8 @@ class LinkPub {
         const item = this.articlesContainer.querySelector(`[data-id="${id}"]`);
         if (item) {
             const titleEl = item.querySelector('.article-title');
-            titleEl.textContent = article.title;
+            const readingTime = this.calculateReadingTime(article.wordCount);
+            titleEl.innerHTML = `${this.escapeHtml(article.title)} <span class="reading-time">(${readingTime})</span>`;
         }
     }
     
@@ -886,7 +944,7 @@ class LinkPub {
                 credentials: 'include',
                 body: JSON.stringify({
                     title: title,
-                    description: this.generateCollectionDescription(this.articles),
+                    description: this.generateCollectionDescription(this.articles, 'collection'),
                     contents: this.articles.map(article => ({
                         title: article.title,
                         url: article.url,
@@ -1044,16 +1102,50 @@ class LinkPub {
     }
     
     /**
-     * Generate a description for collections that lists all article titles
+     * Calculate reading time based on word count
+     * Uses average reading speed of 200 words per minute
      */
-    generateCollectionDescription(articles) {
-        if (articles.length === 0) return 'Empty collection';
-        if (articles.length === 1) return `${articles[0].title}\n\nSource: ${articles[0].url}`;
+    calculateReadingTime(wordCount) {
+        if (!wordCount || wordCount === 0) return '< 1 min';
         
-        const articlesWithUrls = articles.map((article, index) => 
-            `${index + 1}. ${article.title}\n   ${article.url}`
-        );
-        return `This collection contains ${articles.length} articles:\n\n${articlesWithUrls.join('\n\n')}`;
+        const wordsPerMinute = 200;
+        const minutes = Math.ceil(wordCount / wordsPerMinute);
+        
+        if (minutes < 1) return '< 1 min';
+        if (minutes === 1) return '1 min';
+        if (minutes < 60) return `${minutes} min`;
+        
+        const hours = Math.floor(minutes / 60);
+        const remainingMinutes = minutes % 60;
+        
+        if (hours === 1 && remainingMinutes === 0) return '1 hour';
+        if (remainingMinutes === 0) return `${hours} hours`;
+        if (hours === 1) return `1 hour ${remainingMinutes} min`;
+        
+        return `${hours} hours ${remainingMinutes} min`;
+    }
+    
+    /**
+     * Generate a description for collections that lists all article titles with source info
+     */
+    generateCollectionDescription(articles, sourceType = 'collection') {
+        if (articles.length === 0) return 'Empty collection';
+        
+        if (articles.length === 1) {
+            const article = articles[0];
+            return `${article.title}\n\nSource: ${article.siteName || 'Unknown'}\nURL: ${article.url}\nMethod: ${sourceType}`;
+        }
+        
+        const sourceInfo = sourceType === 'karakeep' ? 'karakeep bookmarks' : 
+                          sourceType === 'api' ? 'API request' : 'manual collection';
+        
+        const articlesWithInfo = articles.map((article, index) => {
+            const siteName = article.siteName || 'Unknown Site';
+            const readingTime = this.calculateReadingTime(article.wordCount || 0);
+            return `${index + 1}. ${article.title}\n   Site: ${siteName}\n   Reading time: ${readingTime}\n   URL: ${article.url}`;
+        });
+        
+        return `This collection contains ${articles.length} articles from ${sourceInfo}:\n\n${articlesWithInfo.join('\n\n')}`;
     }
     
     handleClearAll() {
@@ -1636,6 +1728,10 @@ class LinkPub {
             bookmark.author ? `<div class="bookmark-author">by ${this.escapeHtml(bookmark.author)}</div>` :
             bookmark.publisher ? `<div class="bookmark-author">${this.escapeHtml(bookmark.publisher)}</div>` : '';
         
+        // Estimate reading time based on description length (rough approximation)
+        const estimatedWords = bookmark.description ? Math.max(500, bookmark.description.split(' ').length * 10) : 500;
+        const estimatedReadingTime = this.calculateReadingTime(estimatedWords);
+        
         card.innerHTML = `
             <div class="bookmark-status" style="display: none;"></div>
             <div class="bookmark-header">
@@ -1647,6 +1743,7 @@ class LinkPub {
                     ${authorInfo}
                     <div class="bookmark-meta">
                         <span class="bookmark-domain">${this.escapeHtml(bookmark.domain)}</span>
+                        <span class="bookmark-reading-time">📖 ${estimatedReadingTime}</span>
                         ${publishedDate ? `<span class="bookmark-date">Published: ${publishedDate}</span>` : ''}
                         ${formattedDate ? `<span class="bookmark-date">Saved: ${formattedDate}</span>` : ''}
                         ${bookmark.favourited ? `<span class="bookmark-favourite">⭐ Favourited</span>` : ''}
@@ -1816,7 +1913,7 @@ class LinkPub {
                         credentials: 'include',
                         body: JSON.stringify({
                             title: title,
-                            description: this.generateCollectionDescription(articles),
+                            description: this.generateCollectionDescription(articles, 'karakeep'),
                             contents: articles.map(article => ({
                                 title: article.title,
                                 url: article.url,
@@ -2249,6 +2346,103 @@ class LinkPub {
             console.error('Clear URL history error:', error);
             alert(`Failed to clear URL history: ${error.message}`);
         }
+    }
+    
+    /**
+     * Handle password change
+     */
+    async handleChangePassword() {
+        const currentPassword = document.getElementById('currentPassword').value;
+        const newPassword = document.getElementById('newPassword').value;
+        const confirmPassword = document.getElementById('confirmPassword').value;
+        
+        // Clear previous messages
+        this.passwordMessage.textContent = '';
+        this.passwordMessage.className = 'password-message';
+        
+        // Validation
+        if (!currentPassword || !newPassword || !confirmPassword) {
+            this.showPasswordMessage('Please fill in all password fields', 'error');
+            return;
+        }
+        
+        if (newPassword !== confirmPassword) {
+            this.showPasswordMessage('New passwords do not match', 'error');
+            return;
+        }
+        
+        if (newPassword.length < 8) {
+            this.showPasswordMessage('New password must be at least 8 characters long', 'error');
+            return;
+        }
+        
+        if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(newPassword)) {
+            this.showPasswordMessage('Password must contain at least one uppercase letter, one lowercase letter, and one number', 'error');
+            return;
+        }
+        
+        if (newPassword === currentPassword) {
+            this.showPasswordMessage('New password must be different from current password', 'error');
+            return;
+        }
+        
+        try {
+            this.changePasswordBtn.disabled = true;
+            this.changePasswordBtn.textContent = 'Changing...';
+            
+            const response = await fetch('/api/user/change-password', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                credentials: 'include',
+                body: JSON.stringify({
+                    currentPassword,
+                    newPassword
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                this.showPasswordMessage('Password changed successfully!', 'success');
+                // Clear form
+                document.getElementById('currentPassword').value = '';
+                document.getElementById('newPassword').value = '';
+                document.getElementById('confirmPassword').value = '';
+            } else {
+                this.showPasswordMessage(data.error || 'Failed to change password', 'error');
+            }
+        } catch (error) {
+            console.error('Change password error:', error);
+            this.showPasswordMessage('Failed to change password. Please try again.', 'error');
+        } finally {
+            this.changePasswordBtn.disabled = false;
+            this.changePasswordBtn.textContent = 'Change Password';
+        }
+    }
+    
+    /**
+     * Show password change message
+     */
+    showPasswordMessage(message, type) {
+        this.passwordMessage.textContent = message;
+        this.passwordMessage.className = `password-message ${type}`;
+    }
+    
+    /**
+     * Show library modal
+     */
+    async showLibrary() {
+        this.libraryOverlay.style.display = 'flex';
+        await this.loadSavedEpubs();
+    }
+    
+    /**
+     * Hide library modal
+     */
+    hideLibrary() {
+        this.libraryOverlay.style.display = 'none';
     }
 }
 

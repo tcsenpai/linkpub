@@ -188,12 +188,16 @@ body {
 
 /* User Menu */
 .user-menu {
-    position: absolute;
-    top: 2rem;
-    right: 2rem;
     display: flex;
+    justify-content: center;
     align-items: center;
     gap: 1rem;
+    background: var(--bg-secondary);
+    padding: 1rem 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px var(--shadow-light);
+    border: 1px solid var(--border-color);
+    margin-bottom: 2rem;
 }
 
 .user-info {
@@ -234,8 +238,8 @@ body {
 
 header {
     text-align: center;
-    margin-bottom: 3rem;
-    padding: 2rem 0;
+    margin-bottom: 2rem;
+    padding: 1.5rem 0;
     background: var(--bg-secondary);
     border-radius: 12px;
     box-shadow: 0 4px 12px var(--shadow-light);
@@ -251,7 +255,7 @@ header {
 }
 
 header h1 {
-    font-size: 2.5rem;
+    font-size: 2rem;
     font-weight: 400;
     margin: 0;
     color: var(--accent-color);
@@ -1270,10 +1274,9 @@ footer {
     }
     
     .user-menu {
-        position: static;
-        margin-bottom: 1rem;
-        justify-content: center;
         flex-wrap: wrap;
+        padding: 0.75rem 1rem;
+        gap: 0.75rem;
     }
     
     header h1 {
@@ -1429,7 +1432,8 @@ footer {
 
 /* Settings Overlay */
 .settings-overlay,
-.url-history-overlay {
+.url-history-overlay,
+.library-overlay {
     position: fixed;
     top: 0;
     left: 0;
@@ -1443,11 +1447,12 @@ footer {
 }
 
 .settings-modal,
-.url-history-modal {
+.url-history-modal,
+.library-modal {
     background: var(--bg-secondary);
     border-radius: 12px;
     box-shadow: 0 20px 40px var(--shadow-medium);
-    max-width: 600px;
+    max-width: 800px;
     width: 90%;
     max-height: 80vh;
     overflow: hidden;
@@ -1455,8 +1460,13 @@ footer {
     flex-direction: column;
 }
 
+.library-modal {
+    max-width: 1000px;
+}
+
 .settings-header,
-.url-history-header {
+.url-history-header,
+.library-header {
     padding: 1.5rem 2rem;
     border-bottom: 1px solid var(--border-color);
     display: flex;
@@ -1466,7 +1476,8 @@ footer {
 }
 
 .settings-header h2,
-.url-history-header h2 {
+.url-history-header h2,
+.library-header h2 {
     color: var(--text-primary);
     font-size: 1.5rem;
     margin: 0;
@@ -1489,7 +1500,8 @@ footer {
 }
 
 .settings-content,
-.url-history-content {
+.url-history-content,
+.library-content {
     padding: 2rem;
     overflow-y: auto;
     flex: 1;
@@ -1522,6 +1534,52 @@ footer {
 
 .setting-item {
     margin-bottom: 1rem;
+}
+
+/* Reading Time Styles */
+.reading-time {
+    color: var(--text-secondary);
+    font-size: 0.85em;
+    font-weight: normal;
+    margin-left: 0.5rem;
+}
+
+.bookmark-reading-time {
+    color: var(--text-secondary);
+    font-size: 0.85em;
+    font-weight: normal;
+}
+
+/* Password Form Styles */
+.password-form {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1.5rem;
+}
+
+.password-form .form-group {
+    margin-bottom: 1rem;
+}
+
+.password-message {
+    margin-top: 1rem;
+    padding: 0.75rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.password-message.success {
+    background: rgba(39, 174, 96, 0.1);
+    color: var(--success-color);
+    border: 1px solid var(--success-color);
+}
+
+.password-message.error {
+    background: rgba(231, 76, 60, 0.1);
+    color: var(--error-color);
+    border: 1px solid var(--error-color);
 }
 
 /* API Key Styles */
@@ -1733,6 +1791,214 @@ footer {
     color: var(--text-secondary);
     padding: 2rem;
     font-style: italic;
+}
+
+/* =================================================================
+   SETUP PAGE STYLES
+   ================================================================= */
+
+.setup-body {
+    background: linear-gradient(135deg, var(--accent-color) 0%, var(--accent-light) 100%);
+    min-height: 100vh;
+    padding: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.setup-container {
+    width: 100%;
+    max-width: 800px;
+}
+
+.setup-card {
+    background: var(--bg-secondary);
+    border-radius: 16px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+.setup-header {
+    background: var(--bg-accent);
+    padding: 3rem 2rem 2rem;
+    text-align: center;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.setup-header h1 {
+    font-size: 2.5rem;
+    color: var(--accent-color);
+    margin-bottom: 1rem;
+    font-family: 'Crimson Text', serif;
+}
+
+.setup-header p {
+    font-size: 1.1rem;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.setup-form {
+    padding: 2rem;
+}
+
+.setup-section {
+    text-align: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.setup-section h2 {
+    color: var(--text-primary);
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.setup-description {
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin: 0;
+}
+
+.field-hint {
+    display: block;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    margin-top: 0.5rem;
+    font-style: italic;
+}
+
+.password-strength {
+    margin: 1rem 0;
+}
+
+.strength-indicator {
+    width: 100%;
+    height: 8px;
+    background: var(--border-color);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 0.5rem;
+}
+
+.strength-bar {
+    height: 100%;
+    transition: all 0.3s ease;
+    border-radius: 4px;
+}
+
+.strength-text {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.setup-btn {
+    width: 100%;
+    padding: 1rem 2rem;
+    background: var(--accent-color);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 1rem;
+}
+
+.setup-btn:hover:not(:disabled) {
+    background: var(--accent-light);
+    transform: translateY(-2px);
+}
+
+.setup-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.setup-error,
+.setup-success {
+    padding: 1rem;
+    border-radius: 6px;
+    margin-top: 1rem;
+    font-weight: 500;
+}
+
+.setup-error {
+    background: rgba(231, 76, 60, 0.1);
+    color: var(--error-color);
+    border: 1px solid var(--error-color);
+}
+
+.setup-success {
+    background: rgba(39, 174, 96, 0.1);
+    color: var(--success-color);
+    border: 1px solid var(--success-color);
+}
+
+.setup-footer {
+    background: var(--bg-primary);
+    padding: 2rem;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.setup-info h3 {
+    color: var(--text-primary);
+    font-size: 1.1rem;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.setup-info ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.setup-info li {
+    color: var(--text-secondary);
+    padding: 0.25rem 0;
+    position: relative;
+    padding-left: 1.5rem;
+}
+
+.setup-info li:before {
+    content: "✓";
+    color: var(--success-color);
+    font-weight: bold;
+    position: absolute;
+    left: 0;
+}
+
+/* Mobile Responsiveness for Setup */
+@media (max-width: 768px) {
+    .setup-body {
+        padding: 1rem;
+    }
+    
+    .setup-header {
+        padding: 2rem 1rem 1.5rem;
+    }
+    
+    .setup-header h1 {
+        font-size: 2rem;
+    }
+    
+    .setup-form {
+        padding: 1.5rem;
+    }
+    
+    .setup-footer {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
 }
 
 /* Mobile Responsiveness for Settings */

@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="LinkPub Initial Setup - Create your admin account">
+    
+    <title>LinkPub - Initial Setup</title>
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+</head>
+<body class="setup-body">
+    <div class="setup-container">
+        <div class="setup-card">
+            <div class="setup-header">
+                <h1>📚 Welcome to LinkPub</h1>
+                <p>Let's set up your admin account to get started</p>
+            </div>
+            
+            <form class="setup-form" id="setupForm">
+                <div class="setup-section">
+                    <h2>Create Admin Account</h2>
+                    <p class="setup-description">
+                        This will be the primary administrator account for LinkPub.
+                        You can add more users later through the settings.
+                    </p>
+                </div>
+                
+                <div class="form-group">
+                    <label for="adminUsername">Admin Username</label>
+                    <input 
+                        type="text" 
+                        id="adminUsername" 
+                        class="form-input" 
+                        placeholder="Enter admin username"
+                        required
+                        minlength="3"
+                        autocomplete="username"
+                    >
+                    <small class="field-hint">Minimum 3 characters</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="adminPassword">Password</label>
+                    <input 
+                        type="password" 
+                        id="adminPassword" 
+                        class="form-input" 
+                        placeholder="Enter secure password"
+                        required
+                        minlength="8"
+                        autocomplete="new-password"
+                    >
+                    <small class="field-hint">Minimum 8 characters with uppercase, lowercase, and number</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="confirmPassword">Confirm Password</label>
+                    <input 
+                        type="password" 
+                        id="confirmPassword" 
+                        class="form-input" 
+                        placeholder="Confirm password"
+                        required
+                        minlength="8"
+                        autocomplete="new-password"
+                    >
+                    <small class="field-hint">Must match the password above</small>
+                </div>
+                
+                <div class="password-strength" id="passwordStrength" style="display: none;">
+                    <div class="strength-indicator">
+                        <div class="strength-bar" id="strengthBar"></div>
+                    </div>
+                    <div class="strength-text" id="strengthText">Password strength</div>
+                </div>
+                
+                <button type="submit" class="setup-btn" id="setupBtn">
+                    Create Admin Account & Complete Setup
+                </button>
+                
+                <div class="setup-error" id="setupError" style="display: none;"></div>
+                <div class="setup-success" id="setupSuccess" style="display: none;"></div>
+            </form>
+            
+            <div class="setup-footer">
+                <div class="setup-info">
+                    <h3>🔒 Security Features</h3>
+                    <ul>
+                        <li>Passwords are securely hashed with bcrypt</li>
+                        <li>Session-based authentication</li>
+                        <li>API key generation for programmatic access</li>
+                        <li>User preference management</li>
+                    </ul>
+                </div>
+                
+                <div class="setup-info">
+                    <h3>📚 What's Next?</h3>
+                    <ul>
+                        <li>Convert web articles to EPUB format</li>
+                        <li>Build collections from multiple articles</li>
+                        <li>Manage your personal EPUB library</li>
+                        <li>Access via API for automation</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        class LinkPubSetup {
+            constructor() {
+                this.setupForm = document.getElementById('setupForm');
+                this.usernameInput = document.getElementById('adminUsername');
+                this.passwordInput = document.getElementById('adminPassword');
+                this.confirmInput = document.getElementById('confirmPassword');
+                this.setupBtn = document.getElementById('setupBtn');
+                this.setupError = document.getElementById('setupError');
+                this.setupSuccess = document.getElementById('setupSuccess');
+                this.passwordStrength = document.getElementById('passwordStrength');
+                this.strengthBar = document.getElementById('strengthBar');
+                this.strengthText = document.getElementById('strengthText');
+                
+                this.initEventListeners();
+            }
+            
+            initEventListeners() {
+                this.setupForm.addEventListener('submit', (e) => this.handleSetup(e));
+                this.passwordInput.addEventListener('input', () => this.checkPasswordStrength());
+                this.confirmInput.addEventListener('input', () => this.validatePasswordMatch());
+            }
+            
+            checkPasswordStrength() {
+                const password = this.passwordInput.value;
+                this.passwordStrength.style.display = password ? 'block' : 'none';
+                
+                if (!password) return;
+                
+                let strength = 0;
+                let issues = [];
+                
+                if (password.length >= 8) strength++;
+                else issues.push('8+ characters');
+                
+                if (/[a-z]/.test(password)) strength++;
+                else issues.push('lowercase letter');
+                
+                if (/[A-Z]/.test(password)) strength++;
+                else issues.push('uppercase letter');
+                
+                if (/\d/.test(password)) strength++;
+                else issues.push('number');
+                
+                if (/[^a-zA-Z0-9]/.test(password)) strength++;
+                
+                const strengthLevels = ['Very Weak', 'Weak', 'Fair', 'Good', 'Strong'];
+                const strengthColors = ['#e74c3c', '#e67e22', '#f39c12', '#27ae60', '#2ecc71'];
+                
+                this.strengthBar.style.width = `${(strength / 5) * 100}%`;
+                this.strengthBar.style.backgroundColor = strengthColors[strength - 1] || '#e74c3c';
+                this.strengthText.textContent = strengthLevels[strength - 1] || 'Very Weak';
+                
+                if (issues.length > 0) {
+                    this.strengthText.textContent += ` (needs: ${issues.join(', ')})`;
+                }
+            }
+            
+            validatePasswordMatch() {
+                const password = this.passwordInput.value;
+                const confirm = this.confirmInput.value;
+                
+                if (confirm && password !== confirm) {
+                    this.confirmInput.setCustomValidity('Passwords do not match');
+                } else {
+                    this.confirmInput.setCustomValidity('');
+                }
+            }
+            
+            async handleSetup(e) {
+                e.preventDefault();
+                
+                const username = this.usernameInput.value.trim();
+                const password = this.passwordInput.value;
+                const confirm = this.confirmInput.value;
+                
+                this.hideMessages();
+                
+                // Validation
+                if (!username || !password || !confirm) {
+                    this.showError('Please fill in all fields');
+                    return;
+                }
+                
+                if (username.length < 3) {
+                    this.showError('Username must be at least 3 characters long');
+                    return;
+                }
+                
+                if (password.length < 8) {
+                    this.showError('Password must be at least 8 characters long');
+                    return;
+                }
+                
+                if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
+                    this.showError('Password must contain at least one uppercase letter, one lowercase letter, and one number');
+                    return;
+                }
+                
+                if (password !== confirm) {
+                    this.showError('Passwords do not match');
+                    return;
+                }
+                
+                try {
+                    this.setupBtn.disabled = true;
+                    this.setupBtn.textContent = 'Setting up...';
+                    
+                    const response = await fetch('/api/setup/complete', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ username, password })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (response.ok) {
+                        this.showSuccess('Setup completed successfully! Redirecting to application...');
+                        setTimeout(() => {
+                            window.location.href = '/app';
+                        }, 2000);
+                    } else {
+                        this.showError(data.error || 'Setup failed');
+                    }
+                } catch (error) {
+                    console.error('Setup error:', error);
+                    this.showError('Setup failed. Please try again.');
+                } finally {
+                    this.setupBtn.disabled = false;
+                    this.setupBtn.textContent = 'Create Admin Account & Complete Setup';
+                }
+            }
+            
+            showError(message) {
+                this.setupError.textContent = message;
+                this.setupError.style.display = 'block';
+            }
+            
+            showSuccess(message) {
+                this.setupSuccess.textContent = message;
+                this.setupSuccess.style.display = 'block';
+            }
+            
+            hideMessages() {
+                this.setupError.style.display = 'none';
+                this.setupSuccess.style.display = 'none';
+            }
+        }
+        
+        // Check if setup is already complete
+        async function checkIfSetupAlreadyComplete() {
+            try {
+                const response = await fetch('/api/setup/status');
+                const data = await response.json();
+                if (!data.setupRequired) {
+                    console.log('🔧 Setup already complete, redirecting to main app...');
+                    window.location.href = '/';
+                    return false;
+                }
+                return true;
+            } catch (error) {
+                console.error('Setup status check failed:', error);
+                return true; // If we can't check, assume setup is needed
+            }
+        }
+
+        // Initialize setup when DOM is ready
+        document.addEventListener('DOMContentLoaded', async () => {
+            const needsSetup = await checkIfSetupAlreadyComplete();
+            if (needsSetup) {
+                new LinkPubSetup();
+            }
+        });
+    </script>
+</body>
+</html>

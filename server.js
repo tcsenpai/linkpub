@@ -20,6 +20,7 @@ const { JSDOM } = require('jsdom');
 const { Readability } = require('@mozilla/readability');
 const path = require('path');
 const fs = require('fs').promises;
+const bcrypt = require('bcrypt');
 require('dotenv').config();
 
 const app = express();
@@ -45,8 +46,16 @@ app.use(cors({
 // Parse JSON bodies (increased limit for EPUB data)
 app.use(express.json({ limit: '50mb' }));
 
-// Serve static files (HTML, CSS, JS)
-app.use(express.static('.'));
+// Serve static files (CSS, JS, etc) but exclude HTML files from auto-serving
+app.use(express.static('.', { 
+    index: false,  // Don't auto-serve index.html
+    setHeaders: (res, path) => {
+        // Prevent caching of HTML files during development
+        if (path.endsWith('.html')) {
+            res.setHeader('Cache-Control', 'no-cache');
+        }
+    }
+}));
 
 // Session management for user authentication
 app.use(session({
@@ -92,8 +101,8 @@ async function initializeApp() {
         try {
             await fs.access(epubsDir);
         } catch {
-            await fs.mkdir(epubsDir, { recursive: true });
-            console.log('📁 Created epubs directory');
+            await fs.mkdir(epubsDir, { recursive: true, mode: 0o755 });
+            console.log('📁 Created epubs directory with proper permissions');
         }
         
         // Set global paths for Docker compatibility
@@ -104,31 +113,18 @@ async function initializeApp() {
         // Initialize users.json if it doesn't exist
         try {
             await fs.access(global.USERS_FILE);
+            console.log('👥 users.json found at:', global.USERS_FILE);
         } catch {
+            console.log('👥 No users.json found. Creating empty file for web-based setup...');
+            console.log('👥 Will create users.json at:', global.USERS_FILE);
+            // Create empty users file to indicate setup is needed
+            const emptyUsers = { users: [], setupRequired: true };
             try {
-                // Try to copy from example file
-                const exampleContent = await fs.readFile('users.json.example', 'utf8');
-                await fs.writeFile(global.USERS_FILE, exampleContent);
-                console.log('👥 Created users.json from example file');
-            } catch {
-                // Create default users.json if example doesn't exist
-                const defaultUsers = {
-                    users: [
-                        {
-                            id: "admin",
-                            username: "admin",
-                            password: "changeme",
-                            theme: "light",
-                            preferences: {
-                                trackUrls: true,
-                                defaultAuthor: "LinkPub",
-                                autoSave: true
-                            }
-                        }
-                    ]
-                };
-                await fs.writeFile(global.USERS_FILE, JSON.stringify(defaultUsers, null, 2));
-                console.log('👥 Created default users.json (username: admin, password: changeme)');
+                await fs.writeFile(global.USERS_FILE, JSON.stringify(emptyUsers, null, 2));
+                console.log('👥 ✅ Created empty users.json successfully');
+                console.log('👥 File content:', JSON.stringify(emptyUsers, null, 2));
+            } catch (writeError) {
+                console.error('👥 ❌ Failed to create users.json:', writeError.message);
             }
         }
         
@@ -148,6 +144,22 @@ async function initializeApp() {
     }
 }
 
+/**
+ * Check if initial setup is required
+ */
+async function isSetupRequired() {
+    try {
+        const userData = await loadUsers();
+        const usersArray = userData.users || [];
+        const setupNeeded = usersArray.length === 0;
+        console.log('🔍 Setup required:', setupNeeded, '(users count:', usersArray.length, ')');
+        return setupNeeded;
+    } catch (error) {
+        console.log('🔍 Setup check error:', error.message);
+        return true; // If we can't check, assume setup is needed
+    }
+}
+
 // =============================================================================
 // HELPER FUNCTIONS
 // =============================================================================
@@ -159,11 +171,15 @@ async function initializeApp() {
 async function loadUsers() {
     try {
         const userFile = global.USERS_FILE || 'users.json';
+        console.log('📄 loadUsers() reading from:', userFile);
         const data = await fs.readFile(userFile, 'utf8');
-        return JSON.parse(data);
+        const parsed = JSON.parse(data);
+        console.log('📄 loadUsers() file content:', data);
+        console.log('📄 loadUsers() parsed:', JSON.stringify(parsed, null, 2));
+        return parsed;
     } catch (error) {
-        console.error('❌ Error loading users:', error.message);
-        return { users: [] };
+        console.error('❌ Error loading users from', global.USERS_FILE || 'users.json', ':', error.message);
+        return { users: [], setupRequired: true };
     }
 }
 
@@ -393,10 +409,127 @@ function requireAuth(req, res, next) {
 // =============================================================================
 
 /**
- * Serve main application page
+ * Serve main application page or setup page
  */
-app.get('/', (req, res) => {
+app.get('/', async (req, res) => {
+    try {
+        console.log('📄 Root route accessed');
+        
+        // Load users and check if users array is empty
+        const userData = await loadUsers();
+        const usersArray = userData.users || [];
+        const needsSetup = usersArray.length === 0;
+        
+        console.log('📄 Users count:', usersArray.length);
+        console.log('📄 Needs setup:', needsSetup);
+        
+        if (needsSetup) {
+            console.log('📄 No users found - serving setup.html');
+            res.sendFile(path.join(__dirname, 'setup.html'));
+        } else {
+            console.log('📄 Users exist - serving index.html (login page)');
+            res.sendFile(path.join(__dirname, 'index.html'));
+        }
+    } catch (error) {
+        console.error('❌ Error in root route:', error);
+        // Fallback to setup page if there's any error
+        console.log('📄 Error fallback: serving setup.html');
+        res.sendFile(path.join(__dirname, 'setup.html'));
+    }
+});
+
+/**
+ * Force serve main app (for after setup completion)
+ */
+app.get('/app', async (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+/**
+ * Test route to verify routing works
+ */
+app.get('/test', (req, res) => {
+    console.log('🧪 Test route accessed');
+    res.json({ message: 'Test route works', timestamp: new Date().toISOString() });
+});
+
+// =============================================================================
+// SETUP ROUTES
+// =============================================================================
+
+/**
+ * Check setup status
+ */
+app.get('/api/setup/status', async (req, res) => {
+    try {
+        const setupRequired = await isSetupRequired();
+        res.json({ setupRequired });
+    } catch (error) {
+        console.error('Setup status error:', error);
+        res.json({ setupRequired: true });
+    }
+});
+
+/**
+ * Complete initial setup
+ */
+app.post('/api/setup/complete', async (req, res) => {
+    try {
+        // Check if setup is still required
+        if (!(await isSetupRequired())) {
+            return res.status(400).json({ error: 'Setup has already been completed' });
+        }
+
+        const { username, password } = req.body;
+
+        // Validate input
+        if (!username || !password) {
+            return res.status(400).json({ error: 'Username and password are required' });
+        }
+
+        if (username.length < 3) {
+            return res.status(400).json({ error: 'Username must be at least 3 characters long' });
+        }
+
+        if (password.length < 8) {
+            return res.status(400).json({ error: 'Password must be at least 8 characters long' });
+        }
+
+        if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
+            return res.status(400).json({ error: 'Password must contain at least one uppercase letter, one lowercase letter, and one number' });
+        }
+
+        // Hash password
+        const saltRounds = 12;
+        const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+        // Create user data
+        const userData = {
+            users: [
+                {
+                    id: "admin",
+                    username: username.trim(),
+                    password: hashedPassword,
+                    theme: "light",
+                    preferences: {
+                        trackUrls: true,
+                        defaultAuthor: "LinkPub",
+                        autoSave: true
+                    }
+                }
+            ]
+        };
+
+        await saveUsers(userData);
+
+        console.log(`✅ Admin user '${username}' created successfully via web setup!`);
+
+        res.json({ success: true, message: 'Setup completed successfully' });
+
+    } catch (error) {
+        console.error('Setup completion error:', error);
+        res.status(500).json({ error: 'Setup failed. Please try again.' });
+    }
 });
 
 // =============================================================================
@@ -416,11 +549,15 @@ app.post('/api/auth/login', async (req, res) => {
     
     try {
         const userData = await loadUsers();
-        const user = userData.users.find(u => 
-            u.username === username && u.password === password
-        );
+        const user = userData.users.find(u => u.username === username);
         
         if (!user) {
+            return res.status(401).json({ error: 'Invalid credentials' });
+        }
+        
+        // Check password
+        const passwordMatch = await bcrypt.compare(password, user.password);
+        if (!passwordMatch) {
             return res.status(401).json({ error: 'Invalid credentials' });
         }
         
@@ -643,6 +780,65 @@ app.get('/api/user/api-key', requireAuth, async (req, res) => {
     } catch (error) {
         console.error('❌ API key fetch error:', error.message);
         res.status(500).json({ error: 'Failed to fetch API key' });
+    }
+});
+
+/**
+ * Change user password
+ */
+app.post('/api/user/change-password', requireAuth, async (req, res) => {
+    const { currentPassword, newPassword } = req.body;
+    
+    // Validate input
+    if (!currentPassword || !newPassword) {
+        return res.status(400).json({ error: 'Current password and new password are required' });
+    }
+    
+    if (newPassword.length < 8) {
+        return res.status(400).json({ error: 'New password must be at least 8 characters long' });
+    }
+    
+    // Check password complexity
+    if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(newPassword)) {
+        return res.status(400).json({ error: 'Password must contain at least one uppercase letter, one lowercase letter, and one number' });
+    }
+    
+    try {
+        const userData = await loadUsers();
+        const userIndex = userData.users.findIndex(u => u.id === req.session.user.id);
+        
+        if (userIndex === -1) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        const user = userData.users[userIndex];
+        
+        // Verify current password
+        const currentPasswordMatch = await bcrypt.compare(currentPassword, user.password);
+        if (!currentPasswordMatch) {
+            return res.status(401).json({ error: 'Current password is incorrect' });
+        }
+        
+        // Check if new password is different
+        const samePassword = await bcrypt.compare(newPassword, user.password);
+        if (samePassword) {
+            return res.status(400).json({ error: 'New password must be different from current password' });
+        }
+        
+        // Hash new password
+        const saltRounds = 12;
+        const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+        
+        // Update password
+        userData.users[userIndex].password = hashedPassword;
+        await saveUsers(userData);
+        
+        console.log(`🔒 Password changed for user: ${req.session.user.username}`);
+        
+        res.json({ success: true, message: 'Password changed successfully' });
+    } catch (error) {
+        console.error('❌ Password change error:', error.message);
+        res.status(500).json({ error: 'Failed to change password' });
     }
 });
 
